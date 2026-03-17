@@ -53,7 +53,7 @@ export class Game extends Scene {
     }
 
     private createEntities() {
-        this.npc = new Npc(this, 1000, 190);
+        this.npc = new Npc(this, 1000, 190, 'Esses slimes corrompidos estão destruindo nossas cavernas. Acabe com eles o mais rápido possível!');
         this.player = new Player(this, 600, 144, 'player_idle');
         this.npc.setPlayerTracking(this.player);
 

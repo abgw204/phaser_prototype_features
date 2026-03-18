@@ -5,6 +5,8 @@ import { QuestManager, QuestStatus } from './questManager';
 export class Npc extends Phaser.Physics.Arcade.Sprite {
     interaction: InteractionComponent;
     private questManager: QuestManager | null = null;
+    private exclamationIcon: Phaser.GameObjects.Image;
+    private missionInteracted: boolean = false;
 
     static preload(scene: Phaser.Scene) {
         scene.load.spritesheet('npc_idle', 'npcIdle.png', {
@@ -44,6 +46,8 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
             gapY: 10
         });
 
+        this.exclamationIcon = scene.add.image(x + 35, y - 40, 'exclamation').setScale(4);
+
         this.scene.events.on(Phaser.Scenes.Events.UPDATE, this.update, this);
         this.once(Phaser.GameObjects.Events.DESTROY, () => {
             this.scene.events.off(Phaser.Scenes.Events.UPDATE, this.update, this);
@@ -56,6 +60,14 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
 
     private handleInteraction() {
         if (!this.questManager) return;
+
+        // Permanently remove exclamation on first interaction
+        if (!this.missionInteracted) {
+            this.missionInteracted = true;
+            if (this.exclamationIcon && this.exclamationIcon.active) {
+                this.exclamationIcon.destroy();
+            }
+        }
 
         const status = this.questManager.getStatus();
         const scene = this.scene as any; // Accessing DialogueSystem and QuizUI from Game scene
@@ -108,6 +120,11 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
 
     update(_ts: number, _dt: number) {
         this.interaction.update();
+
+        // Toggle exclamation visibility if mission hasn't started
+        if (!this.missionInteracted && this.exclamationIcon && this.exclamationIcon.active) {
+            this.exclamationIcon.setVisible(!this.interaction.isPromptVisible);
+        }
     }
 }
 

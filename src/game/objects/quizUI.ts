@@ -11,7 +11,7 @@ export class QuizUI {
     private quizContainer: Phaser.GameObjects.Container;
     private questionText: Phaser.GameObjects.Text;
     private optionTexts: Phaser.GameObjects.Text[] = [];
-    
+
     private currentQuestionIndex: number = 0;
     private selectedOptionIndex: number = 0;
     private questions: QuizQuestion[] = [];
@@ -23,10 +23,10 @@ export class QuizUI {
         this.scene = scene;
 
         this.quizContainer = scene.add.container(1920 / 2, 1080 / 2).setScrollFactor(0);
-        
+
         const quizBg = scene.add.rectangle(0, 0, 1000, 600, 0x000000, 0.95)
             .setStrokeStyle(6, 0xffffff);
-            
+
         this.questionText = scene.add.text(0, -200, '', {
             fontSize: '40px',
             color: '#ffffff',
@@ -69,7 +69,7 @@ export class QuizUI {
     private showQuestion() {
         const question = this.questions[this.currentQuestionIndex];
         this.questionText.setText(question.text);
-        
+
         // Clear previous options
         this.optionTexts.forEach(t => t.destroy());
         this.optionTexts = [];
@@ -87,7 +87,7 @@ export class QuizUI {
 
     private moveSelection(dir: number) {
         if (!this.isVisible) return;
-        
+
         this.selectedOptionIndex = Phaser.Math.Wrap(
             this.selectedOptionIndex + dir,
             0,

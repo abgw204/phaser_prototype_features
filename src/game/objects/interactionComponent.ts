@@ -19,7 +19,7 @@ export class InteractionComponent {
     private promptContainer: Phaser.GameObjects.Container;
     private dialogContainer: Phaser.GameObjects.Container;
 
-    private isPromptVisible: boolean = false;
+    public isPromptVisible: boolean = false;
     private isDialogVisible: boolean = false;
 
     private interactionDistance: number;

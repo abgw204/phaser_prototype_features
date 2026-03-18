@@ -23,6 +23,7 @@ export class Game extends Scene {
         Npc.preload(this);
         this.load.tilemapTiledJSON('map', 'museum/map.json');
         this.load.image('tiles', 'museum/spritesheet.png');
+        this.load.image('exclamation', 'exclamation.png');
     }
 
     create() {
@@ -79,7 +80,7 @@ export class Game extends Scene {
     }
 
     private createEntities() {
-        this.npc = new Npc(this, 1800, 190);
+        this.npc = new Npc(this, 1670, 190);
         this.player = new Player(this, 600, 144, 'player_idle');
         this.npc.setPlayerTracking(this.player);
         this.npc.setQuestManager(this.questManager);

@@ -30,6 +30,8 @@ export class InteractionComponent {
     private onInfoCollected: ((key: string) => void) | null = null;
 
     private keyHandler: (event: KeyboardEvent) => void;
+    private lastInteractionTime: number = 0;
+    private readonly INTERACTION_COOLDOWN: number = 250;
 
     constructor(
         scene: Phaser.Scene,
@@ -58,7 +60,7 @@ export class InteractionComponent {
         this.promptContainer.setVisible(false);
 
         // Create Dialog UI
-        this.dialogContainer = scene.add.container(1920 / 2, 1080 - 150).setScrollFactor(0);
+        this.dialogContainer = scene.add.container(1920 / 2, 1080 - 180).setScrollFactor(0);
         const dialogBg = scene.add.rectangle(0, 0, 1200, 100, 0x000000, 0.8)
             .setStrokeStyle(4, 0xffffff);
         const dialogText = scene.add.text(-500, -33, this.dialogMessage, {
@@ -73,7 +75,12 @@ export class InteractionComponent {
         // Setup Key Listener
         this.keyHandler = (event: KeyboardEvent) => {
             if (event.key.toLowerCase() === 'e') {
+                const now = Date.now();
+                if (now - this.lastInteractionTime < this.INTERACTION_COOLDOWN) return;
+
                 if (this.isPromptVisible) {
+                    this.lastInteractionTime = now;
+
                     if (this.dialogueLines) {
                         // Complex dialogue (managed by scene/DialogueSystem)
                         if (this.onInteract) this.onInteract();
@@ -136,20 +143,37 @@ export class InteractionComponent {
     private showDialog() {
         this.isDialogVisible = true;
         this.dialogContainer.setVisible(true);
-        this.scene.cameras.main.zoomTo(1.2, 400);
+
+        // Use a Tween instead of zoomTo for better interrupt handling
+        this.scene.tweens.add({
+            targets: this.scene.cameras.main,
+            zoom: 1.2,
+            duration: 400,
+            ease: 'Power2',
+            overwrite: true
+        });
+
         this.scene.events.emit('dialogue-started');
     }
 
     private hideDialog() {
         this.isDialogVisible = false;
         this.dialogContainer.setVisible(false);
-        this.scene.cameras.main.zoomTo(1, 500);
+
+        this.scene.tweens.add({
+            targets: this.scene.cameras.main,
+            zoom: 1,
+            duration: 400,
+            ease: 'Power2',
+            overwrite: true
+        });
+
         this.scene.events.emit('dialogue-ended');
     }
 
 
     destroy() {
-        this.scene.input.keyboard?.off('keydown-E', this.keyHandler);
+        this.scene.input.keyboard?.off('keydown', this.keyHandler);
         this.promptContainer.destroy();
         this.dialogContainer.destroy();
     }

@@ -5,28 +5,34 @@ export class DialogueSystem {
     private dialogContainer: Phaser.GameObjects.Container;
     private dialogText: Phaser.GameObjects.Text;
     private nextIndicator: Phaser.GameObjects.Text;
-    
+    private continueMessage: Phaser.GameObjects.Text;
+
     private lines: string[] = [];
     private currentLineIndex: number = 0;
     private onComplete: (() => void) | null = null;
-    private isVisible: boolean = false;
+    public isVisible: boolean = false;
 
     constructor(scene: Phaser.Scene) {
         this.scene = scene;
 
         // Create Dialog UI (reusing InteractionComponent style)
         this.dialogContainer = scene.add.container(1920 / 2, 1080 - 150).setScrollFactor(0);
-        
-        const dialogBg = scene.add.rectangle(0, 0, 1200, 150, 0x000000, 0.9)
+
+        const dialogBg = scene.add.rectangle(0, -50, 1200, 150, 0x000000, 0.9)
             .setStrokeStyle(4, 0xffffff);
-            
-        this.dialogText = scene.add.text(-550, -50, '', {
+
+        this.dialogText = scene.add.text(-550, -100, '', {
             fontSize: '32px',
             color: '#ffffff',
             wordWrap: { width: 1100 }
         });
 
-        this.nextIndicator = scene.add.text(550, 30, '▼', {
+        this.nextIndicator = scene.add.text(553, -18, '▼', {
+            fontSize: '24px',
+            color: '#ffffff'
+        }).setOrigin(0.5);
+
+        this.continueMessage = scene.add.text(380, -10, 'ESPAÇO para continuar', {
             fontSize: '24px',
             color: '#ffffff'
         }).setOrigin(0.5);
@@ -40,7 +46,7 @@ export class DialogueSystem {
             repeat: -1
         });
 
-        this.dialogContainer.add([dialogBg, this.dialogText, this.nextIndicator]);
+        this.dialogContainer.add([dialogBg, this.dialogText, this.nextIndicator, this.continueMessage]);
         this.dialogContainer.setVisible(false);
         this.dialogContainer.setDepth(1000);
 
@@ -57,10 +63,18 @@ export class DialogueSystem {
         this.currentLineIndex = 0;
         this.onComplete = onComplete ?? null;
         this.isVisible = true;
-        
+
         this.updateText();
         this.dialogContainer.setVisible(true);
-        this.scene.cameras.main.zoomTo(1.2, 400);
+
+        // Use Tween with overwrite to handle rapid triggers
+        this.scene.tweens.add({
+            targets: this.scene.cameras.main,
+            zoom: 1.2,
+            duration: 400,
+            ease: 'Power2',
+            overwrite: true
+        });
 
         // Disable player movement (Game scene handling)
         this.scene.events.emit('dialogue-started');
@@ -85,7 +99,15 @@ export class DialogueSystem {
     private hideDialogue() {
         this.isVisible = false;
         this.dialogContainer.setVisible(false);
-        this.scene.cameras.main.zoomTo(1, 500);
+
+        this.scene.tweens.add({
+            targets: this.scene.cameras.main,
+            zoom: 1,
+            duration: 500,
+            ease: 'Power2',
+            overwrite: true
+        });
+
         this.scene.events.emit('dialogue-ended');
     }
 }

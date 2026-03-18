@@ -17,7 +17,7 @@ export class QuizUI {
     private questions: QuizQuestion[] = [];
     private onComplete: (score: number) => void;
     private score: number = 0;
-    private isVisible: boolean = false;
+    public isVisible: boolean = false;
 
     constructor(scene: Phaser.Scene) {
         this.scene = scene;

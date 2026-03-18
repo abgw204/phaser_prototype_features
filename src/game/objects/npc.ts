@@ -40,8 +40,8 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
         this.interaction = new InteractionComponent(scene, this, {
             dialogueLines: [], // Marks this as complex dialogue
             onInteract: () => this.handleInteraction(),
-            gapX: 30,
-            gapY: 0
+            gapX: 35,
+            gapY: 10
         });
 
         this.scene.events.on(Phaser.Scenes.Events.UPDATE, this.update, this);

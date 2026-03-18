@@ -62,7 +62,14 @@ export class Game extends Scene {
             if (this.player) this.player.isInDialogue = true;
         });
         this.events.on('dialogue-ended', () => {
-            if (this.player) this.player.isInDialogue = false;
+            // Delay restoring control slightly so the SPACE press that closed
+            // the dialogue doesn't trigger a jump.
+            this.time.delayedCall(200, () => {
+                // Only restore control if we didn't immediately start another dialogue/quiz
+                if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible) {
+                    if (this.player) this.player.isInDialogue = false;
+                }
+            });
         });
     }
 
@@ -72,8 +79,8 @@ export class Game extends Scene {
     }
 
     private createEntities() {
-        this.player = new Player(this, 600, 144, 'player_idle');
         this.npc = new Npc(this, 1800, 190);
+        this.player = new Player(this, 600, 144, 'player_idle');
         this.npc.setPlayerTracking(this.player);
         this.npc.setQuestManager(this.questManager);
 
@@ -126,7 +133,7 @@ export class Game extends Scene {
                     'Talvez precise observar as obras com mais atenção...',
                     'Tente ler as informações novamente!'
                 ], () => {
-                   this.questManager.setStatus(QuestStatus.READY_FOR_QUIZ);
+                    this.questManager.setStatus(QuestStatus.READY_FOR_QUIZ);
                 });
             }
         });

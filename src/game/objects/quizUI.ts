@@ -53,12 +53,17 @@ export class QuizUI {
         this.onComplete = onComplete;
         this.currentQuestionIndex = 0;
         this.score = 0;
-        this.isVisible = true;
-        this.isVisible = true;
+        this.isVisible = false; // Keep input blocked until the next frame
 
         this.showQuestion();
         this.quizContainer.setVisible(true);
         this.scene.events.emit('dialogue-started');
+
+        // Delay enabling input by one frame so the SPACE that closed the
+        // last dialogue line doesn't also immediately answer the first question.
+        this.scene.time.delayedCall(100, () => {
+            this.isVisible = true;
+        });
     }
 
     private showQuestion() {

@@ -91,9 +91,14 @@ export class DialogueSystem {
     }
 
     private updateText() {
+        const isLastLine = this.currentLineIndex === this.lines.length - 1;
         this.dialogText.setText(this.lines[this.currentLineIndex]);
-        // Last line? Hide indicator
-        this.nextIndicator.setVisible(this.currentLineIndex < this.lines.length - 1);
+        
+        // Hide indicator on last line
+        this.nextIndicator.setVisible(!isLastLine);
+        
+        // Update message text for clarity
+        this.continueMessage.setText(isLastLine ? 'ESPAÇO para fechar' : 'ESPAÇO para continuar');
     }
 
     private hideDialogue() {

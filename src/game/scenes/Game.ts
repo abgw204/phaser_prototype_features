@@ -2,10 +2,16 @@ import { Scene } from 'phaser';
 import { Player } from '../objects/player';
 import { Npc } from '../objects/npc';
 import { InteractiveButton } from '../objects/interactiveButton';
+import { QuestManager, QuestStatus } from '../objects/questManager';
+import { DialogueSystem } from '../objects/dialogueSystem';
+import { QuizUI } from '../objects/quizUI';
 
 export class Game extends Scene {
     player: Player;
     npc: Npc;
+    questManager: QuestManager;
+    dialogueSystem: DialogueSystem;
+    quizUI: QuizUI;
 
     constructor() {
         super('Game');
@@ -32,19 +38,32 @@ export class Game extends Scene {
         let collisionLayer: Phaser.Tilemaps.TilemapLayer | null = null;
 
         if (tileset) {
-            // Background layer - sem colisão
             const bgLayer = map.createLayer('Background', tileset, 0, 0);
             bgLayer?.setScale(10);
 
-            // Collision layer - colisão nas quatro direções
             collisionLayer = map.createLayer('Collision', tileset, 0, 0);
             collisionLayer?.setScale(10);
             collisionLayer?.setCollisionByExclusion([-1]);
         }
 
+        // Initialize Systems
+        this.dialogueSystem = new DialogueSystem(this);
+        this.quizUI = new QuizUI(this);
+        this.questManager = new QuestManager(['statue_info', 'painting_info']);
+
         this.createEntities();
         this.setupCollisions(collisionLayer);
         this.setupCameras();
+        this.setupEvents();
+    }
+
+    private setupEvents() {
+        this.events.on('dialogue-started', () => {
+            if (this.player) this.player.isInDialogue = true;
+        });
+        this.events.on('dialogue-ended', () => {
+            if (this.player) this.player.isInDialogue = false;
+        });
     }
 
     private createAnimations() {
@@ -53,21 +72,64 @@ export class Game extends Scene {
     }
 
     private createEntities() {
-        this.npc = new Npc(this, 1800, 190, 'Bem vindo ao museu!');
         this.player = new Player(this, 600, 144, 'player_idle');
+        this.npc = new Npc(this, 1800, 190);
         this.npc.setPlayerTracking(this.player);
+        this.npc.setQuestManager(this.questManager);
 
-        // Botões interativos da cena
         const statue_btn = new InteractiveButton(this, 212, 90, {
             interactionDistance: 210,
-            dialogText: 'Esta estatua foi esculpida no ano de 1832, por ...',
+            dialogText: 'ESTÁTUA: Esculpida em 1832. Representa a coragem dos heróis antigos.',
+            infoKey: 'statue_info',
+            onInfoCollected: (key) => this.questManager.collectInfo(key)
         });
+
         const painting_btn = new InteractiveButton(this, 1272, 250, {
             interactionDistance: 130,
-            dialogText: 'Noite estrelada, uma das pinturas mais famosas do mundo. Criada em ... por ...',
+            dialogText: 'PINTURA: Criada por Vincent no ano de 1889. Suas cores vibrantes são únicas.',
+            infoKey: 'painting_info',
+            onInfoCollected: (key) => this.questManager.collectInfo(key)
         });
+
         statue_btn.setPlayerTracking(this.player);
         painting_btn.setPlayerTracking(this.player);
+    }
+
+    public startQuiz() {
+        this.quizUI.startQuiz([
+            {
+                text: 'Em que ano a estátua foi esculpida?',
+                options: ['1832', '1850', '1901'],
+                correctIndex: 0
+            },
+            {
+                text: 'Quem criou a pintura famosa?',
+                options: ['Leonardo', 'Vincent', 'Picasso'],
+                correctIndex: 1
+            },
+            {
+                text: 'Em que ano a pintura foi criada?',
+                options: ['1789', '1889', '1920'],
+                correctIndex: 1
+            }
+        ], (score) => {
+            if (score >= 2) {
+                this.dialogueSystem.showDialogue([
+                    `Incrível! Você acertou ${score} de 3 questões.`,
+                    'Você é um verdadeiro especialista em arte agora!'
+                ], () => {
+                    this.questManager.setStatus(QuestStatus.COMPLETED);
+                });
+            } else {
+                this.dialogueSystem.showDialogue([
+                    `Você acertou ${score} de 3 questões.`,
+                    'Talvez precise observar as obras com mais atenção...',
+                    'Tente ler as informações novamente!'
+                ], () => {
+                   this.questManager.setStatus(QuestStatus.READY_FOR_QUIZ);
+                });
+            }
+        });
     }
 
     private setupCollisions(collisionLayer: Phaser.Tilemaps.TilemapLayer | null) {
@@ -84,3 +146,4 @@ export class Game extends Scene {
     update(_time: number, _delta: number) {
     }
 }
+

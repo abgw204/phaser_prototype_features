@@ -3,9 +3,12 @@ import * as Phaser from 'phaser';
 export interface InteractionOptions {
     interactionDistance?: number;
     dialogText?: string;
+    dialogueLines?: string[];
+    infoKey?: string;
     gapX?: number;
     gapY?: number;
     onInteract?: () => void;
+    onInfoCollected?: (infoKey: string) => void;
 }
 
 export class InteractionComponent {
@@ -21,9 +24,12 @@ export class InteractionComponent {
 
     private interactionDistance: number;
     private dialogMessage: string;
+    private dialogueLines: string[] | null = null;
+    private infoKey: string | null = null;
     private onInteract: (() => void) | null = null;
+    private onInfoCollected: ((key: string) => void) | null = null;
 
-    private keyHandler: () => void;
+    private keyHandler: (event: KeyboardEvent) => void;
 
     constructor(
         scene: Phaser.Scene,
@@ -34,10 +40,13 @@ export class InteractionComponent {
         this.parent = parent;
         this.interactionDistance = options?.interactionDistance ?? 130;
         this.dialogMessage = options?.dialogText ?? 'Interação!';
+        this.dialogueLines = options?.dialogueLines ?? null;
+        this.infoKey = options?.infoKey ?? null;
         this.onInteract = options?.onInteract ?? null;
+        this.onInfoCollected = options?.onInfoCollected ?? null;
 
         // Create Prompt UI
-        this.promptContainer = scene.add.container(parent.x, parent.y - 30)
+        this.promptContainer = scene.add.container(parent.x, parent.y - 30);
         const promptBg = scene.add.rectangle(options?.gapX ?? 0, options?.gapY ?? 0, 30, 30, 0x000000, 0.8)
             .setStrokeStyle(2, 0xffffff);
         const promptText = scene.add.text(options?.gapX ?? 0, options?.gapY ?? 0, 'E', {
@@ -59,15 +68,31 @@ export class InteractionComponent {
         });
         this.dialogContainer.add([dialogBg, dialogText]);
         this.dialogContainer.setVisible(false);
+        this.dialogContainer.setDepth(100);
 
         // Setup Key Listener
-        this.keyHandler = () => {
-            if (this.isPromptVisible && !this.isDialogVisible) {
-                this.showDialog();
-                if (this.onInteract) this.onInteract();
+        this.keyHandler = (event: KeyboardEvent) => {
+            if (event.key.toLowerCase() === 'e') {
+                if (this.isPromptVisible) {
+                    if (this.dialogueLines) {
+                        // Complex dialogue (managed by scene/DialogueSystem)
+                        if (this.onInteract) this.onInteract();
+                    } else {
+                        // Simple single-line dialog
+                        if (this.isDialogVisible) {
+                            this.hideDialog();
+                        } else {
+                            this.showDialog();
+                            if (this.infoKey && this.onInfoCollected) {
+                                this.onInfoCollected(this.infoKey);
+                            }
+                            if (this.onInteract) this.onInteract();
+                        }
+                    }
+                }
             }
         };
-        scene.input.keyboard?.on('keydown-E', this.keyHandler);
+        scene.input.keyboard?.on('keydown', this.keyHandler);
 
         // Cleanup on parent destroy
         parent.once(Phaser.GameObjects.Events.DESTROY, () => {
@@ -79,8 +104,15 @@ export class InteractionComponent {
         this.playerRef = player;
     }
 
+    setDialogMessage(message: string) {
+        this.dialogMessage = message;
+        // Update the text object in container if it exists
+        const textObj = this.dialogContainer.getAt(1) as Phaser.GameObjects.Text;
+        if (textObj) textObj.setText(message);
+    }
+
     update() {
-        this.promptContainer.setPosition(this.parent.x, this.parent.y - 30);
+        this.promptContainer.setPosition(this.parent.x, this.parent.y - 40);
 
         if (!this.playerRef) return;
 
@@ -105,13 +137,16 @@ export class InteractionComponent {
         this.isDialogVisible = true;
         this.dialogContainer.setVisible(true);
         this.scene.cameras.main.zoomTo(1.2, 400);
+        this.scene.events.emit('dialogue-started');
     }
 
     private hideDialog() {
         this.isDialogVisible = false;
         this.dialogContainer.setVisible(false);
         this.scene.cameras.main.zoomTo(1, 500);
+        this.scene.events.emit('dialogue-ended');
     }
+
 
     destroy() {
         this.scene.input.keyboard?.off('keydown-E', this.keyHandler);

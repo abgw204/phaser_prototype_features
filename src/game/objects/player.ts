@@ -6,6 +6,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     isHit: boolean = false;
     hp: number = 3;
     coinsCollected: number = 0;
+    isInDialogue: boolean = false;
 
     static preload(scene: Phaser.Scene) {
         scene.load.spritesheet('player_idle', 'slime/IdleSpritesheet.png', {
@@ -113,7 +114,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     update(_ts: number, _dt: number) {
-        if (this.isDead) return;
+        if (this.isDead || this.isInDialogue) return;
 
         if (this.isHit) {
             // Cannot control while in hit stun

@@ -36,7 +36,9 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
         this.play('npc_idle_anim');
 
         this.interaction = new InteractionComponent(scene, this, {
-            dialogText: dialogText
+            dialogText: dialogText,
+            gapX: 30,
+            gapY: 0
         });
 
         this.scene.events.on(Phaser.Scenes.Events.UPDATE, this.update, this);

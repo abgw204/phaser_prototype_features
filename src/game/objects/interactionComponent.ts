@@ -3,6 +3,8 @@ import * as Phaser from 'phaser';
 export interface InteractionOptions {
     interactionDistance?: number;
     dialogText?: string;
+    gapX?: number;
+    gapY?: number;
     onInteract?: () => void;
 }
 
@@ -10,17 +12,17 @@ export class InteractionComponent {
     private scene: Phaser.Scene;
     private parent: Phaser.GameObjects.GameObject & { x: number; y: number };
     private playerRef: Phaser.Physics.Arcade.Sprite | null = null;
-    
+
     private promptContainer: Phaser.GameObjects.Container;
     private dialogContainer: Phaser.GameObjects.Container;
-    
+
     private isPromptVisible: boolean = false;
     private isDialogVisible: boolean = false;
-    
+
     private interactionDistance: number;
     private dialogMessage: string;
     private onInteract: (() => void) | null = null;
-    
+
     private keyHandler: () => void;
 
     constructor(
@@ -35,10 +37,10 @@ export class InteractionComponent {
         this.onInteract = options?.onInteract ?? null;
 
         // Create Prompt UI
-        this.promptContainer = scene.add.container(parent.x, parent.y - 30);
-        const promptBg = scene.add.rectangle(0, 0, 30, 30, 0x000000, 0.8)
+        this.promptContainer = scene.add.container(parent.x, parent.y - 30)
+        const promptBg = scene.add.rectangle(options?.gapX ?? 0, options?.gapY ?? 0, 30, 30, 0x000000, 0.8)
             .setStrokeStyle(2, 0xffffff);
-        const promptText = scene.add.text(0, 0, 'E', {
+        const promptText = scene.add.text(options?.gapX ?? 0, options?.gapY ?? 0, 'E', {
             fontSize: '20px',
             color: '#ffffff',
             fontStyle: 'bold'

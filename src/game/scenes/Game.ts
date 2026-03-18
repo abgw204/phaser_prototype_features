@@ -53,16 +53,21 @@ export class Game extends Scene {
     }
 
     private createEntities() {
-        this.npc = new Npc(this, 1000, 190, 'Esses slimes corrompidos estão destruindo nossas cavernas. Acabe com eles o mais rápido possível!');
+        this.npc = new Npc(this, 1800, 190, 'Bem vindo ao museu!');
         this.player = new Player(this, 600, 144, 'player_idle');
         this.npc.setPlayerTracking(this.player);
 
-        // Exemplo: botão interativo em uma posição desejada
-        const button = new InteractiveButton(this, 1500, 300, {
-            interactionDistance: 130,
-            dialogText: 'Bem-vindo ao museu! Explore as obras de arte ao redor.',
+        // Botões interativos da cena
+        const statue_btn = new InteractiveButton(this, 212, 90, {
+            interactionDistance: 210,
+            dialogText: 'Esta estatua foi esculpida no ano de 1832, por ...',
         });
-        button.setPlayerTracking(this.player);
+        const painting_btn = new InteractiveButton(this, 1272, 250, {
+            interactionDistance: 130,
+            dialogText: 'Noite estrelada, uma das pinturas mais famosas do mundo. Criada em ... por ...',
+        });
+        statue_btn.setPlayerTracking(this.player);
+        painting_btn.setPlayerTracking(this.player);
     }
 
     private setupCollisions(collisionLayer: Phaser.Tilemaps.TilemapLayer | null) {

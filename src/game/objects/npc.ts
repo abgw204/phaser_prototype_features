@@ -6,7 +6,7 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
     interaction: InteractionComponent;
     private questManager: QuestManager | null = null;
     private exclamationIcon: Phaser.GameObjects.Image;
-    private missionInteracted: boolean = false;
+    private missionAccepted: boolean = false;
 
     static preload(scene: Phaser.Scene) {
         scene.load.spritesheet('npc_idle', 'npcIdle.png', {
@@ -61,16 +61,16 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
     private handleInteraction() {
         if (!this.questManager) return;
 
-        // Permanently remove exclamation on first interaction
-        if (!this.missionInteracted) {
-            this.missionInteracted = true;
-            if (this.exclamationIcon && this.exclamationIcon.active) {
-                this.exclamationIcon.destroy();
-            }
-        }
-
         const status = this.questManager.getStatus();
         const scene = this.scene as any; // Accessing DialogueSystem and QuizUI from Game scene
+
+        const pending = this.questManager.getPendingResult();
+        if (pending) {
+            scene.dialogueSystem.showDialogue(pending, () => {
+                this.questManager?.clearPendingResult();
+            });
+            return;
+        }
 
         switch (status) {
             case QuestStatus.IDLE:
@@ -85,6 +85,11 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
                     this.questManager?.setStatus(QuestStatus.COLLECTING);
                     this.scene.events.emit('mission-accepted', 'obras_famosas');
                     this.scene.events.emit('mission-status-changed');
+
+                    this.missionAccepted = true;
+                    if (this.exclamationIcon && this.exclamationIcon.active) {
+                        this.exclamationIcon.destroy();
+                    }
                 });
                 break;
 
@@ -124,10 +129,9 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
     update(_ts: number, _dt: number) {
         this.interaction.update();
 
-        // Toggle exclamation visibility if mission hasn't started
-        if (!this.missionInteracted && this.exclamationIcon && this.exclamationIcon.active) {
+        // Toggle exclamation visibility while mission not accepted
+        if (!this.missionAccepted && this.exclamationIcon && this.exclamationIcon.active) {
             this.exclamationIcon.setVisible(!this.interaction.isPromptVisible);
         }
     }
 }
-

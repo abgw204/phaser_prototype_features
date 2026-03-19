@@ -145,22 +145,32 @@ export class Game extends Scene {
             }
         ], (score) => {
             if (score >= 2) {
-                this.dialogueSystem.showDialogue([
+                this.questManager.setStatus(QuestStatus.COMPLETED);
+                this.events.emit('mission-status-changed');
+
+                const lines = [
                     `Incrível! Você acertou ${score} de 3 questões.`,
                     'Você é um verdadeiro especialista em arte agora!'
-                ], () => {
-                    this.questManager.setStatus(QuestStatus.COMPLETED);
-                    this.events.emit('mission-status-changed');
-                });
-            } else {
+                ];
+                this.questManager.setPendingResult(lines);
+
                 this.dialogueSystem.showDialogue([
+                    ...lines
+                ], () => this.questManager.clearPendingResult());
+            } else {
+                this.questManager.setStatus(QuestStatus.READY_FOR_QUIZ);
+                this.events.emit('mission-status-changed');
+
+                const lines = [
                     `Você acertou ${score} de 3 questões.`,
                     'Talvez precise observar as obras com mais atenção...',
                     'Tente ler as informações novamente!'
-                ], () => {
-                    this.questManager.setStatus(QuestStatus.READY_FOR_QUIZ);
-                    this.events.emit('mission-status-changed');
-                });
+                ];
+                this.questManager.setPendingResult(lines);
+
+                this.dialogueSystem.showDialogue([
+                    ...lines
+                ], () => this.questManager.clearPendingResult());
             }
         });
     }

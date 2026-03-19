@@ -56,6 +56,12 @@ export class DialogueSystem {
                 this.nextLine();
             }
         });
+
+        scene.input.keyboard?.on('keydown-ESC', () => {
+            if (this.isVisible) {
+                this.closeDialogue(false);
+            }
+        });
     }
 
     showDialogue(lines: string[], onComplete?: () => void) {
@@ -83,8 +89,7 @@ export class DialogueSystem {
     private nextLine() {
         this.currentLineIndex++;
         if (this.currentLineIndex >= this.lines.length) {
-            this.hideDialogue();
-            if (this.onComplete) this.onComplete();
+            this.closeDialogue(true);
         } else {
             this.updateText();
         }
@@ -101,9 +106,14 @@ export class DialogueSystem {
         this.continueMessage.setText(isLastLine ? 'ESPAÇO para fechar' : 'ESPAÇO para continuar');
     }
 
-    private hideDialogue() {
+    private closeDialogue(complete: boolean) {
+        const cb = complete ? this.onComplete : null;
+
         this.isVisible = false;
         this.dialogContainer.setVisible(false);
+        this.lines = [];
+        this.currentLineIndex = 0;
+        this.onComplete = null;
 
         this.scene.tweens.add({
             targets: this.scene.cameras.main,
@@ -114,5 +124,6 @@ export class DialogueSystem {
         });
 
         this.scene.events.emit('dialogue-ended');
+        if (cb) cb();
     }
 }

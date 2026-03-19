@@ -15,6 +15,7 @@ export interface QuestData {
 
 export class QuestManager {
     private questData: QuestData;
+    private pendingResultLines: string[] | null = null;
 
     constructor(requiredInfos: string[]) {
         this.questData = {
@@ -66,6 +67,18 @@ export class QuestManager {
         return this.questData.collectedInfos.size;
     }
 
+    setPendingResult(lines: string[] | null) {
+        this.pendingResultLines = lines;
+    }
+
+    getPendingResult(): string[] | null {
+        return this.pendingResultLines ? [...this.pendingResultLines] : null;
+    }
+
+    clearPendingResult() {
+        this.pendingResultLines = null;
+    }
+
     hasCollectedAll(): boolean {
         return this.questData.requiredInfos.every(info => this.questData.collectedInfos.has(info));
     }
@@ -73,5 +86,6 @@ export class QuestManager {
     reset() {
         this.questData.collectedInfos.clear();
         this.questData.status = QuestStatus.IDLE;
+        this.pendingResultLines = null;
     }
 }

@@ -52,6 +52,23 @@ export class Game extends Scene {
         this.quizUI = new QuizUI(this);
         this.questManager = new QuestManager(['statue_info', 'painting_info']);
 
+        this.scene.launch('UIScene', {
+            phaseTitle: 'Museu antigo',
+            missionsTotal: 1,
+            questManager: this.questManager,
+            missionDefs: {
+                obras_famosas: {
+                    id: 'obras_famosas',
+                    title: 'Obras famosas',
+                    steps: [
+                        { infoKey: 'statue_info', text: 'Verifique a estátua do herói' },
+                        { infoKey: 'painting_info', text: 'Verifique a pintura famosa' }
+                    ]
+                }
+            }
+        });
+        this.scene.bringToTop('UIScene');
+
         this.createEntities();
         this.setupCollisions(collisionLayer);
         this.setupCameras();
@@ -89,14 +106,20 @@ export class Game extends Scene {
             interactionDistance: 210,
             dialogText: 'ESTÁTUA: Esculpida em 1832. Representa a coragem dos heróis antigos.',
             infoKey: 'statue_info',
-            onInfoCollected: (key) => this.questManager.collectInfo(key)
+            onInfoCollected: (key) => {
+                const changed = this.questManager.collectInfo(key);
+                if (changed) this.events.emit('mission-progress-changed');
+            }
         });
 
         const painting_btn = new InteractiveButton(this, 1272, 250, {
             interactionDistance: 130,
             dialogText: 'PINTURA: Criada por Vincent no ano de 1889. Suas cores vibrantes são únicas.',
             infoKey: 'painting_info',
-            onInfoCollected: (key) => this.questManager.collectInfo(key)
+            onInfoCollected: (key) => {
+                const changed = this.questManager.collectInfo(key);
+                if (changed) this.events.emit('mission-progress-changed');
+            }
         });
 
         statue_btn.setPlayerTracking(this.player);
@@ -127,6 +150,7 @@ export class Game extends Scene {
                     'Você é um verdadeiro especialista em arte agora!'
                 ], () => {
                     this.questManager.setStatus(QuestStatus.COMPLETED);
+                    this.events.emit('mission-status-changed');
                 });
             } else {
                 this.dialogueSystem.showDialogue([
@@ -135,6 +159,7 @@ export class Game extends Scene {
                     'Tente ler as informações novamente!'
                 ], () => {
                     this.questManager.setStatus(QuestStatus.READY_FOR_QUIZ);
+                    this.events.emit('mission-status-changed');
                 });
             }
         });
@@ -154,4 +179,3 @@ export class Game extends Scene {
     update(_time: number, _delta: number) {
     }
 }
-

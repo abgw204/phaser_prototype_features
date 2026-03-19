@@ -32,13 +32,38 @@ export class QuestManager {
         this.questData.status = status;
     }
 
-    collectInfo(infoKey: string) {
-        if (this.questData.status === QuestStatus.COLLECTING) {
-            this.questData.collectedInfos.add(infoKey);
-            if (this.hasCollectedAll()) {
-                this.setStatus(QuestStatus.READY_FOR_QUIZ);
-            }
+    collectInfo(infoKey: string): boolean {
+        if (this.questData.status !== QuestStatus.COLLECTING) return false;
+
+        const before = this.questData.collectedInfos.size;
+        this.questData.collectedInfos.add(infoKey);
+        const changed = this.questData.collectedInfos.size !== before;
+
+        if (changed && this.hasCollectedAll()) {
+            this.setStatus(QuestStatus.READY_FOR_QUIZ);
         }
+
+        return changed;
+    }
+
+    getRequiredInfos(): string[] {
+        return [...this.questData.requiredInfos];
+    }
+
+    getCollectedInfos(): string[] {
+        return Array.from(this.questData.collectedInfos);
+    }
+
+    hasInfo(infoKey: string): boolean {
+        return this.questData.collectedInfos.has(infoKey);
+    }
+
+    getRequiredCount(): number {
+        return this.questData.requiredInfos.length;
+    }
+
+    getCollectedCount(): number {
+        return this.questData.collectedInfos.size;
     }
 
     hasCollectedAll(): boolean {

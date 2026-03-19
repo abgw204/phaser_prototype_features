@@ -83,6 +83,8 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
                     'Boa sorte!'
                 ], () => {
                     this.questManager?.setStatus(QuestStatus.COLLECTING);
+                    this.scene.events.emit('mission-accepted', 'obras_famosas');
+                    this.scene.events.emit('mission-status-changed');
                 });
                 break;
 
@@ -101,6 +103,7 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
                     'Vamos lá!'
                 ], () => {
                     this.questManager?.setStatus(QuestStatus.QUIZ_ACTIVE);
+                    this.scene.events.emit('mission-status-changed');
                     scene.startQuiz();
                 });
                 break;
@@ -127,5 +130,4 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
         }
     }
 }
-
 

@@ -13,6 +13,10 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
             frameWidth: 64,
             frameHeight: 64
         });
+        scene.load.spritesheet('npc', 'npc-giving-star.png', {
+            frameWidth: 64,
+            frameHeight: 64
+        });
     }
 
     static createAnims(scene: Phaser.Scene) {
@@ -22,10 +26,16 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
             frameRate: 6,
             repeat: -1
         });
+        scene.anims.create({
+            key: 'npc_anim',
+            frames: scene.anims.generateFrameNumbers('npc', { start: 0, end: 9 }),
+            frameRate: 9,
+            repeat: 0
+        });
     }
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
-        super(scene, x, y, 'npc_idle');
+        super(scene, x, y, 'npc');
 
         scene.add.existing(this);
         scene.physics.add.existing(this);
@@ -42,11 +52,11 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
         this.interaction = new InteractionComponent(scene, this, {
             dialogueLines: [], // Marks this as complex dialogue
             onInteract: () => this.handleInteraction(),
-            gapX: 35,
-            gapY: 10
+            gapX: 0,
+            gapY: -50
         });
 
-        this.exclamationIcon = scene.add.image(x + 35, y - 40, 'exclamation').setScale(4);
+        this.exclamationIcon = scene.add.image(x, y - 100, 'exclamation').setScale(4);
 
         this.scene.events.on(Phaser.Scenes.Events.UPDATE, this.update, this);
         this.once(Phaser.GameObjects.Events.DESTROY, () => {

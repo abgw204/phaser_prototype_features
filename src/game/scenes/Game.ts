@@ -97,7 +97,7 @@ export class Game extends Scene {
     }
 
     private createEntities() {
-        this.npc = new Npc(this, 1670, 190);
+        this.npc = new Npc(this, 1700, 250);
         this.player = new Player(this, 600, 144, 'player_idle');
         this.npc.setPlayerTracking(this.player);
         this.npc.setQuestManager(this.questManager);
@@ -150,8 +150,11 @@ export class Game extends Scene {
 
                 const lines = [
                     `Incrível! Você acertou ${score} de 3 questões.`,
-                    'Você é um verdadeiro especialista em arte agora!'
+                    'Você é um verdadeiro especialista em arte agora!',
+                    'Pegue essa estrela dourada como recompensa!',
+                    'Você precisará delas ao longo da sua jornada!'
                 ];
+                this.npc.play('npc_anim');
                 this.questManager.setPendingResult(lines);
 
                 this.dialogueSystem.showDialogue([

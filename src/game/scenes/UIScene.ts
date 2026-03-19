@@ -191,7 +191,7 @@ export class UIScene extends Scene {
             t.setPosition(-this.padding, this.padding + 44 + (idx * lineHeight));
             // Initialize with current state so we don't rely on a later refresh order.
             const done = this.questManager?.hasInfo(step.infoKey) ?? false;
-            const checkbox = done ? '[x]' : '[ ]';
+            const checkbox = done ? '[✓]' : '[ ]';
             t.setText(`${checkbox} ${step.text}`);
             stepTexts.push(t);
         });
@@ -208,7 +208,7 @@ export class UIScene extends Scene {
 
         def.steps.forEach((step, idx) => {
             const done = this.questManager.hasInfo(step.infoKey);
-            const checkbox = done ? '[x]' : '[ ]';
+            const checkbox = done ? '[✓]' : '[ ]';
             texts[idx].setText(`${checkbox} ${step.text}`);
             texts[idx].setColor(done ? '#a8ffb0' : '#ffffff');
         });

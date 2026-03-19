@@ -6,6 +6,7 @@ export class DialogueSystem {
     private dialogText: Phaser.GameObjects.Text;
     private nextIndicator: Phaser.GameObjects.Text;
     private continueMessage: Phaser.GameObjects.Text;
+    private escHint: Phaser.GameObjects.Text;
 
     private lines: string[] = [];
     private currentLineIndex: number = 0;
@@ -29,13 +30,19 @@ export class DialogueSystem {
 
         this.nextIndicator = scene.add.text(553, -18, '▼', {
             fontSize: '24px',
-            color: '#ffffff'
+            color: '#00af09ff'
         }).setOrigin(0.5);
 
         this.continueMessage = scene.add.text(380, -10, 'ESPAÇO para continuar', {
             fontSize: '24px',
-            color: '#ffffff'
+            color: '#00af09ff'
         }).setOrigin(0.5);
+
+        // ESC hint (bottom-left)
+        this.escHint = scene.add.text(-560, 0, 'ESC para fechar', {
+            fontSize: '22px',
+            color: '#ff4d4d'
+        }).setOrigin(0, 1);
 
         // Indicator animation
         scene.tweens.add({
@@ -46,7 +53,13 @@ export class DialogueSystem {
             repeat: -1
         });
 
-        this.dialogContainer.add([dialogBg, this.dialogText, this.nextIndicator, this.continueMessage]);
+        this.dialogContainer.add([
+            dialogBg,
+            this.dialogText,
+            this.nextIndicator,
+            this.continueMessage,
+            this.escHint,
+        ]);
         this.dialogContainer.setVisible(false);
         this.dialogContainer.setDepth(1000);
 

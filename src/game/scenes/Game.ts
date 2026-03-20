@@ -5,9 +5,11 @@ import { InteractiveButton } from '../objects/interactiveButton';
 import { QuestManager, QuestStatus } from '../objects/questManager';
 import { DialogueSystem } from '../objects/dialogueSystem';
 import { QuizUI } from '../objects/quizUI';
+import { Enemy } from '../objects/enemy';
 
 export class Game extends Scene {
     player: Player;
+    rat: Enemy;
     npcs: Npc[] = [];
     questManager: QuestManager;
     dialogueSystem: DialogueSystem;
@@ -21,6 +23,7 @@ export class Game extends Scene {
         this.load.setPath('src/game/Assets');
         Player.preload(this);
         Npc.preload(this);
+        Enemy.preload(this);
         this.load.tilemapTiledJSON('map', 'museum-full-level/map.json');
         this.load.image('tiles', 'museum-full-level/spritesheet.png');
         this.load.image('exclamation', 'exclamation.png');
@@ -98,6 +101,13 @@ export class Game extends Scene {
                 // Only restore control if we didn't immediately start another dialogue/quiz
                 if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible) {
                     if (this.player) this.player.isInDialogue = false;
+
+                    // Ensure NPCs return to their idle animation
+                    if (this.npcs) {
+                        for (const npc of this.npcs) {
+                            npc.play('npc_idle_anim', true);
+                        }
+                    }
                 }
             });
         });
@@ -106,6 +116,7 @@ export class Game extends Scene {
     private createAnimations() {
         Player.createAnims(this);
         Npc.createAnims(this);
+        Enemy.createAnims(this);
     }
 
     private createEntities() {
@@ -159,13 +170,19 @@ export class Game extends Scene {
                     'Muito bem! Você é um expert em relíquias.',
                     'Continue sua visita.'
                 ]
-            }
+            /*if (this.body) {
+            // Offset visual sprite 25 pixels down relative to the collision body
+            // scale is 6.0, so 25 pixels in world = 25 / 6 = 4.166 in unscaled offset
+            // Default offset after setSize(13, 13) on 16x16 sprite is 1.5.
+            (this.body as Phaser.Physics.Arcade.Body).setOffset(1.5, 1.5 - (-10 / 6.0));
+        }*/}
         };
 
-        const npc1 = new Npc(this, 1945, 387, npc1Config);
+        this.rat = new Enemy(this, 1000, 310, 1);
+        const npc1 = new Npc(this, 700, 387, npc1Config).setFlipX(true);
         const npc2 = new Npc(this, 1800, 387, npc2Config);
         this.npcs = [npc1, npc2];
-        this.player = new Player(this, 600, 144, 'player_idle');
+        this.player = new Player(this, 1000, 360, 'player_idle');
 
         for (const npc of this.npcs) {
             npc.setPlayerTracking(this.player);
@@ -349,6 +366,7 @@ export class Game extends Scene {
     private setupCollisions(collisionLayer: Phaser.Tilemaps.TilemapLayer | null) {
         if (collisionLayer) {
             this.physics.add.collider(this.player, collisionLayer);
+            this.physics.add.collider(this.rat, collisionLayer);
             for (const npc of this.npcs) {
                 this.physics.add.collider(npc, collisionLayer);
             }

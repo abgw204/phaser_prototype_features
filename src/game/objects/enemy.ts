@@ -6,7 +6,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 	isDead: boolean = false;
 
 	static preload(scene: Phaser.Scene) {
-		scene.load.spritesheet('enemy_walking', 'slime/enemy_spritesheet.png', {
+		scene.load.spritesheet('enemy_walking', 'Rat-DarkGrey-Walk.png', {
 			frameWidth: 32,
 			frameHeight: 32
 		});
@@ -15,15 +15,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 	static createAnims(scene: Phaser.Scene) {
 		scene.anims.create({
 			key: 'enemy_walk',
-			frames: scene.anims.generateFrameNumbers('enemy_walking', { start: 0, end: 4 }),
+			frames: scene.anims.generateFrameNumbers('enemy_walking', { start: 0, end: 3 }),
 			frameRate: 10,
 			repeat: -1
-		});
-		scene.anims.create({
-			key: 'enemy_death',
-			frames: scene.anims.generateFrameNumbers('enemy_walking', { start: 6, end: 11 }),
-			frameRate: 16,
-			repeat: 0
 		});
 	}
 
@@ -34,9 +28,9 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 		scene.physics.add.existing(this);
 		this.direction = direction;
 
-		this.setScale(4.5);
+		this.setScale(2.5);
 		this.body?.setSize(26, 20);
-		this.body?.setOffset(2, 10);
+		this.body?.setOffset(2, -5);
 		this.setGravityY(8000);
 		this.play('enemy_walk');
 
@@ -66,7 +60,6 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 			this.body.enable = false; // Disable physics
 		}
 
-		this.play('enemy_death', true);
 		this.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
 			this.destroy();
 		});
@@ -76,8 +69,13 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
 		if (this.isDead) return;
 
 		if (this.body) {
+			if (this.body.blocked.left && this.direction === -1) {
+				this.direction = 1;
+			} else if (this.body.blocked.right && this.direction === 1) {
+				this.direction = -1;
+			}
 			this.setVelocityX(200 * this.direction);
-			this.setFlipX(this.direction === 1);
+			this.setFlipX(this.direction === -1);
 		}
 	}
 }

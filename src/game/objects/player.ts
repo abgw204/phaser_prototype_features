@@ -13,14 +13,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             frameWidth: 32,
             frameHeight: 32
         });
-        scene.load.spritesheet('player_death', 'slime/DeathSpritesheet.png', {
-            frameWidth: 20,
-            frameHeight: 20
-        });
-        scene.load.spritesheet('player_hit', 'slime/HitSpritesheet.png', {
-            frameWidth: 16,
-            frameHeight: 16
-        });
     }
 
     static createAnims(scene: Phaser.Scene) {
@@ -56,12 +48,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         this.setDamping(true);
         this.setDrag(0.0001);
         this.body?.setSize(13, 13);
-        /*if (this.body) {
-            // Offset visual sprite 25 pixels down relative to the collision body
-            // scale is 6.0, so 25 pixels in world = 25 / 6 = 4.166 in unscaled offset
-            // Default offset after setSize(13, 13) on 16x16 sprite is 1.5.
-            (this.body as Phaser.Physics.Arcade.Body).setOffset(1.5, 1.5 - (-10 / 6.0));
-        }*/
         this.setGravity(0, 8000);
         this.scene.events.on(Phaser.Scenes.Events.UPDATE, this.update, this);
         this.once(Phaser.GameObjects.Events.DESTROY, () => {

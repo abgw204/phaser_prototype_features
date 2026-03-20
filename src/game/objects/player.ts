@@ -72,6 +72,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         this.setDamping(true);
         this.setDrag(0.0001);
         this.body?.setSize(13, 13);
+        if (this.body) {
+            // Offset visual sprite 25 pixels down relative to the collision body
+            // scale is 6.0, so 25 pixels in world = 25 / 6 = 4.166 in unscaled offset
+            // Default offset after setSize(13, 13) on 16x16 sprite is 1.5.
+            (this.body as Phaser.Physics.Arcade.Body).setOffset(1.5, 1.5 - (35 / 6.0));
+        }
         this.setGravity(0, 8000);
         this.scene.events.on(Phaser.Scenes.Events.UPDATE, this.update, this);
         this.once(Phaser.GameObjects.Events.DESTROY, () => {
@@ -135,7 +141,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             this.anims.play('idle', true);
         }
         if (this.body && this.keys.space.isDown && this.body.blocked.down) {
-            this.setVelocityY(-3500);
+            this.setVelocityY(-2600);
         }
     }
 }

@@ -21,8 +21,8 @@ export class Game extends Scene {
         this.load.setPath('src/game/Assets');
         Player.preload(this);
         Npc.preload(this);
-        this.load.tilemapTiledJSON('map', 'museum/map.json');
-        this.load.image('tiles', 'museum/spritesheet.png');
+        this.load.tilemapTiledJSON('map', 'museum-full-level/map.json');
+        this.load.image('tiles', 'museum-full-level/spritesheet.png');
         this.load.image('exclamation', 'exclamation.png');
     }
 
@@ -97,12 +97,12 @@ export class Game extends Scene {
     }
 
     private createEntities() {
-        this.npc = new Npc(this, 1700, 250);
+        this.npc = new Npc(this, 1945, 371);
         this.player = new Player(this, 600, 144, 'player_idle');
         this.npc.setPlayerTracking(this.player);
         this.npc.setQuestManager(this.questManager);
 
-        const statue_btn = new InteractiveButton(this, 212, 90, {
+        const statue_btn = new InteractiveButton(this, 212, 220, {
             interactionDistance: 210,
             dialogText: 'ESTÁTUA: Esculpida em 1832. Representa a coragem dos heróis antigos.',
             infoKey: 'statue_info',
@@ -112,7 +112,7 @@ export class Game extends Scene {
             }
         });
 
-        const painting_btn = new InteractiveButton(this, 1272, 250, {
+        const painting_btn = new InteractiveButton(this, 1272, 375, {
             interactionDistance: 130,
             dialogText: 'PINTURA: Criada por Vincent no ano de 1889. Suas cores vibrantes são únicas.',
             infoKey: 'painting_info',
@@ -144,7 +144,7 @@ export class Game extends Scene {
                 correctIndex: 1
             }
         ], (score) => {
-            if (score >= 2) {
+            if (score >= 3) {
                 this.questManager.setStatus(QuestStatus.COMPLETED);
                 this.events.emit('mission-status-changed');
 

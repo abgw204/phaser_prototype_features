@@ -1,5 +1,5 @@
 import { Scene } from 'phaser';
-import { QuestManager, QuestStatus } from '../objects/questManager';
+import { QuestManager } from '../objects/questManager';
 
 type MissionStepDef = {
     infoKey: string;
@@ -29,6 +29,10 @@ export class UIScene extends Scene {
     private phasePanel!: Phaser.GameObjects.Container;
     private missionsText!: Phaser.GameObjects.Text;
     private objectsText!: Phaser.GameObjects.Text;
+
+    private starsPanel!: Phaser.GameObjects.Container;
+    private starIcon!: Phaser.GameObjects.Image;
+    private starsText!: Phaser.GameObjects.Text;
 
     private missionPanels: Phaser.GameObjects.Container[] = [];
     private activeMissionIds: string[] = [];
@@ -61,6 +65,7 @@ export class UIScene extends Scene {
         this.root.setDepth(5000);
 
         this.createPhasePanel();
+        this.createStarsPanel();
         this.layout();
 
         this.onResize = () => this.layout();
@@ -120,12 +125,33 @@ export class UIScene extends Scene {
         this.objectsText.setPosition(-this.padding, this.padding + 78);
     }
 
+    private createStarsPanel() {
+        this.starsPanel = this.add.container(0, 0);
+        this.root.add(this.starsPanel);
+
+        this.starIcon = this.add.image(0, 0, 'star').setOrigin(0, 0);
+        this.starIcon.setScale(5);
+
+        this.starsText = this.add.text(this.starIcon.displayWidth + 10, 0, '0', {
+            fontSize: '48px',
+            color: '#ffffff',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setOrigin(0, 0);
+
+        this.starsPanel.add([this.starIcon, this.starsText]);
+    }
+
     private layout() {
         const w = this.scale.width;
         const xRight = w - this.padding;
         const yTop = this.padding;
 
         this.phasePanel.setPosition(xRight, yTop);
+
+        // Position stars top left. root is offset by (-20, 0).
+        this.starsPanel.setPosition(this.padding + 20, this.padding);
 
         let y = yTop + 140 + 14;
         for (const panel of this.missionPanels) {
@@ -136,9 +162,10 @@ export class UIScene extends Scene {
     }
 
     private refreshAll() {
-        const completedMissions = this.questManager.getStatus() === QuestStatus.COMPLETED ? 1 : 0;
+        const completedMissions = this.questManager.getTotalCompletedMissions();
         this.missionsText.setText(`Missões ${completedMissions}/${this.missionsTotal}`);
-        this.objectsText.setText(`Objetos ${this.questManager.getCollectedCount()}/${this.questManager.getRequiredCount()}`);
+        this.objectsText.setText(`Objetos ${this.questManager.getTotalCollectedCount()}/${this.questManager.getTotalRequiredCount()}`);
+        this.starsText.setText(`${completedMissions}`);
 
         for (const missionId of this.activeMissionIds) {
             this.refreshMissionSteps(missionId);
@@ -190,7 +217,7 @@ export class UIScene extends Scene {
             t.setOrigin(1, 0);
             t.setPosition(-this.padding, this.padding + 44 + (idx * lineHeight));
             // Initialize with current state so we don't rely on a later refresh order.
-            const done = this.questManager?.hasInfo(step.infoKey) ?? false;
+            const done = this.questManager?.hasInfo(def.id, step.infoKey) ?? false;
             const checkbox = done ? '[✓]' : '[ ]';
             t.setText(`${checkbox} ${step.text}`);
             stepTexts.push(t);
@@ -207,10 +234,84 @@ export class UIScene extends Scene {
         if (!def || !texts) return;
 
         def.steps.forEach((step, idx) => {
-            const done = this.questManager.hasInfo(step.infoKey);
+            const done = this.questManager.hasInfo(missionId, step.infoKey);
             const checkbox = done ? '[✓]' : '[ ]';
             texts[idx].setText(`${checkbox} ${step.text}`);
             texts[idx].setColor(done ? '#a8ffb0' : '#ffffff');
         });
     }
+
+    private phaseCompletePanel: Phaser.GameObjects.Container | null = null;
+
+    public showPhaseCompleteUI(collectedStars: number, maxStars: number) {
+        if (this.phaseCompletePanel) {
+            this.phaseCompletePanel.destroy();
+        }
+
+        const cx = this.scale.width / 2;
+        const cy = this.scale.height / 2;
+
+        this.phaseCompletePanel = this.add.container(cx, cy);
+        this.phaseCompletePanel.setScrollFactor(0);
+        this.phaseCompletePanel.setDepth(10000);
+
+        const bg = this.add.rectangle(0, 0, 800, 500, 0x000000, 0.95);
+        bg.setStrokeStyle(4, 0xffd700);
+
+        const title = this.add.text(0, -180, 'FASE CONCLUÍDA!', {
+            fontSize: '56px',
+            color: '#ffd700',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        const message = this.add.text(0, 150, 'Parabéns, você completou sua exploração no museu!\nVocê pode continuar explorando.', {
+            fontSize: '28px',
+            color: '#ffffff',
+            wordWrap: { width: 700, useAdvancedWrap: true },
+            align: 'center'
+        }).setOrigin(0.5);
+
+        const closeText = this.add.text(0, 210, '[ Pressione E para fechar ]', {
+            fontSize: '20px',
+            color: '#aaaaaa'
+        }).setOrigin(0.5);
+
+        // Stars display (e.g. * * *)
+        const starsContainer = this.add.container(0, -30);
+        const starSpacing = 140;
+        const startX = -((maxStars - 1) * starSpacing) / 2;
+
+        for (let i = 0; i < maxStars; i++) {
+            const star = this.add.image(startX + (i * starSpacing), 0, 'star');
+            star.setScale(8);
+            if (i >= collectedStars) {
+                star.setTint(0x444444); // Dark star for missing
+                star.setAlpha(0.5);
+            }
+            starsContainer.add(star);
+        }
+
+        this.phaseCompletePanel.add([bg, title, starsContainer, message, closeText]);
+        // Do not add to `this.root` so it centers on screen exactly without -20 offset.
+        
+        // Listen to E to close
+        const keyHandler = (event: KeyboardEvent) => {
+            if (event.key.toLowerCase() === 'e') {
+                this.hidePhaseCompleteUI();
+                this.input.keyboard?.off('keydown', keyHandler);
+            }
+        };
+        // Add a slight delay before attaching listener so the current 'E' press doesn't instantly close it
+        this.time.delayedCall(100, () => {
+            this.input.keyboard?.on('keydown', keyHandler);
+        });
+    }
+
+    public hidePhaseCompleteUI() {
+        if (this.phaseCompletePanel) {
+            this.phaseCompletePanel.destroy();
+            this.phaseCompletePanel = null;
+        }
+    }
 }
+

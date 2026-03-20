@@ -8,7 +8,7 @@ import { QuizUI } from '../objects/quizUI';
 
 export class Game extends Scene {
     player: Player;
-    npc: Npc;
+    npcs: Npc[] = [];
     questManager: QuestManager;
     dialogueSystem: DialogueSystem;
     quizUI: QuizUI;
@@ -24,6 +24,7 @@ export class Game extends Scene {
         this.load.tilemapTiledJSON('map', 'museum-full-level/map.json');
         this.load.image('tiles', 'museum-full-level/spritesheet.png');
         this.load.image('exclamation', 'exclamation.png');
+        this.load.image('star', 'star.png');
     }
 
     create() {
@@ -50,11 +51,14 @@ export class Game extends Scene {
         // Initialize Systems
         this.dialogueSystem = new DialogueSystem(this);
         this.quizUI = new QuizUI(this);
-        this.questManager = new QuestManager(['statue_info', 'painting_info']);
+        this.questManager = new QuestManager([
+            { id: 'obras_famosas', requiredInfos: ['statue_info', 'painting_info'] },
+            { id: 'reliquias_antigas', requiredInfos: ['sarcophagus_info', 'fossil_info'] }
+        ]);
 
         this.scene.launch('UIScene', {
             phaseTitle: 'Museu antigo',
-            missionsTotal: 1,
+            missionsTotal: 2,
             questManager: this.questManager,
             missionDefs: {
                 obras_famosas: {
@@ -63,6 +67,14 @@ export class Game extends Scene {
                     steps: [
                         { infoKey: 'statue_info', text: 'Verifique a estátua do herói' },
                         { infoKey: 'painting_info', text: 'Verifique a pintura famosa' }
+                    ]
+                },
+                reliquias_antigas: {
+                    id: 'reliquias_antigas',
+                    title: 'Relíquias antigas',
+                    steps: [
+                        { infoKey: 'sarcophagus_info', text: 'Verifique o sarcófago' },
+                        { infoKey: 'fossil_info', text: 'Verifique o fóssil' }
                     ]
                 }
             }
@@ -97,10 +109,68 @@ export class Game extends Scene {
     }
 
     private createEntities() {
-        this.npc = new Npc(this, 1945, 371);
+
+        const npc1Config = {
+            missionId: 'obras_famosas',
+            dialogues: {
+                intro: [
+                    'Olá, viajante! Bem-vindo ao museu.',
+                    'Vejo que você tem interesse em história e arte.',
+                    'Eu tenho um desafio para você!',
+                    'Explore o museu, interaja com as obras e aprenda sobre elas.',
+                    'Quando tiver coletado todas as informações, volte aqui para um quiz!',
+                    'Boa sorte!'
+                ],
+                collecting: [
+                    'Ainda faltam informações para você coletar.',
+                    'Procure pela Estátua e pela Pintura Famosa no museu!'
+                ],
+                ready: [
+                    'Excelente! Vejo que você explorou tudo.',
+                    'Agora vamos ver o quanto você aprendeu.',
+                    'Preparado para o Quiz?',
+                    'Vamos lá!'
+                ],
+                completed: [
+                    'Parabéns novamente por completar o desafio!',
+                    'Sinta-se à vontade para continuar explorando o museu.'
+                ]
+            }
+        };
+
+        const npc2Config = {
+            missionId: 'reliquias_antigas',
+            dialogues: {
+                intro: [
+                    'Saudações! Sou o curador de antiguidades.',
+                    'Temos peças muito antigas por aqui.',
+                    'Encontre o sarcófago e o fóssil.',
+                    'Depois volte para conversarmos!'
+                ],
+                collecting: [
+                    'Você ainda não encontrou todas as relíquias.',
+                    'Continue procurando pelo sarcófago e fóssil.'
+                ],
+                ready: [
+                    'Ah, você encontrou as relíquias!',
+                    'Pronto para testar seus conhecimentos?'
+                ],
+                completed: [
+                    'Muito bem! Você é um expert em relíquias.',
+                    'Continue sua visita.'
+                ]
+            }
+        };
+
+        const npc1 = new Npc(this, 1945, 387, npc1Config);
+        const npc2 = new Npc(this, 1800, 387, npc2Config);
+        this.npcs = [npc1, npc2];
         this.player = new Player(this, 600, 144, 'player_idle');
-        this.npc.setPlayerTracking(this.player);
-        this.npc.setQuestManager(this.questManager);
+
+        for (const npc of this.npcs) {
+            npc.setPlayerTracking(this.player);
+            npc.setQuestManager(this.questManager);
+        }
 
         const statue_btn = new InteractiveButton(this, 212, 220, {
             interactionDistance: 210,
@@ -122,66 +192,166 @@ export class Game extends Scene {
             }
         });
 
-        statue_btn.setPlayerTracking(this.player);
-        painting_btn.setPlayerTracking(this.player);
-    }
-
-    public startQuiz() {
-        this.quizUI.startQuiz([
-            {
-                text: 'Em que ano a estátua foi esculpida?',
-                options: ['1832', '1850', '1901'],
-                correctIndex: 0
-            },
-            {
-                text: 'Quem criou a pintura famosa?',
-                options: ['Leonardo', 'Vincent', 'Picasso'],
-                correctIndex: 1
-            },
-            {
-                text: 'Em que ano a pintura foi criada?',
-                options: ['1789', '1889', '1920'],
-                correctIndex: 1
-            }
-        ], (score) => {
-            if (score >= 3) {
-                this.questManager.setStatus(QuestStatus.COMPLETED);
-                this.events.emit('mission-status-changed');
-
-                const lines = [
-                    `Incrível! Você acertou ${score} de 3 questões.`,
-                    'Você é um verdadeiro especialista em arte agora!',
-                    'Pegue essa estrela dourada como recompensa!',
-                    'Você precisará delas ao longo da sua jornada!'
-                ];
-                this.npc.play('npc_anim');
-                this.questManager.setPendingResult(lines);
-
-                this.dialogueSystem.showDialogue([
-                    ...lines
-                ], () => this.questManager.clearPendingResult());
-            } else {
-                this.questManager.setStatus(QuestStatus.READY_FOR_QUIZ);
-                this.events.emit('mission-status-changed');
-
-                const lines = [
-                    `Você acertou ${score} de 3 questões.`,
-                    'Talvez precise observar as obras com mais atenção...',
-                    'Tente ler as informações novamente!'
-                ];
-                this.questManager.setPendingResult(lines);
-
-                this.dialogueSystem.showDialogue([
-                    ...lines
-                ], () => this.questManager.clearPendingResult());
+        const sarcophagus_btn = new InteractiveButton(this, 2275, 350, {
+            interactionDistance: 130,
+            dialogText: 'SARCÓFAGO: Uma antiga urna funerária egípcia.',
+            infoKey: 'sarcophagus_info',
+            onInfoCollected: (key) => {
+                const changed = this.questManager.collectInfo(key);
+                if (changed) this.events.emit('mission-progress-changed');
             }
         });
+
+        const fossil_btn = new InteractiveButton(this, 2769, 350, {
+            interactionDistance: 130,
+            dialogText: 'FÓSSIL: Restos petrificados de uma criatura do período Jurássico.',
+            infoKey: 'fossil_info',
+            onInfoCollected: (key) => {
+                const changed = this.questManager.collectInfo(key);
+                if (changed) this.events.emit('mission-progress-changed');
+            }
+        });
+
+        // Phase Complete Button
+        const maxStars = 2; // Can be cleanly changed to 3 later
+        const endPhase_btn = new InteractiveButton(this, 1460, 395, {
+            interactionDistance: 130,
+            gapY: -60, // Posiciona o prompt 'E' acima do texto (floatText = -60)
+            gapX: 15,
+            dialogueLines: [], // Empty array natively triggers `onInteract` directly, without the default `showDialog()`
+            onInteract: () => {
+                const collected = this.questManager.getTotalCompletedMissions();
+                const uiScene = this.scene.get('UIScene') as any;
+                uiScene.showPhaseCompleteUI(collected, maxStars);
+            }
+        });
+        let isEndPhaseActive = false;
+
+        const endPhase_container = this.add.container(0, -60);
+        const floatStar = this.add.image(-10, 0, 'star').setScale(2.5);
+        const endPhase_floatText = this.add.text(6, 0, `0/${maxStars}`, {
+            fontSize: '22px',
+            color: '#ffff00',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setOrigin(0, 0.5);
+
+        endPhase_container.add([floatStar, endPhase_floatText]);
+        endPhase_btn.add(endPhase_container);
+
+        this.events.on('mission-status-changed', () => {
+            const collected = this.questManager.getTotalCompletedMissions();
+            endPhase_floatText.setText(`${collected}/${maxStars}`);
+
+            // Only show the prompt and enable interaction when all required stars are collected
+            if (collected >= maxStars && !isEndPhaseActive) {
+                isEndPhaseActive = true;
+                endPhase_btn.setPlayerTracking(this.player);
+            }
+        });
+
+        statue_btn.setPlayerTracking(this.player);
+        painting_btn.setPlayerTracking(this.player);
+        sarcophagus_btn.setPlayerTracking(this.player);
+        fossil_btn.setPlayerTracking(this.player);
+    }
+
+    public startQuiz(missionId: string) {
+        if (missionId === 'obras_famosas') {
+            this.quizUI.startQuiz([
+                {
+                    text: 'Em que ano a estátua foi esculpida?',
+                    options: ['1832', '1850', '1901'],
+                    correctIndex: 0
+                },
+                {
+                    text: 'Quem criou a pintura famosa?',
+                    options: ['Leonardo', 'Vincent', 'Picasso'],
+                    correctIndex: 1
+                },
+                {
+                    text: 'Em que ano a pintura foi criada?',
+                    options: ['1789', '1889', '1920'],
+                    correctIndex: 1
+                }
+            ], (score) => {
+                if (score >= 3) {
+                    this.questManager.setStatus(missionId, QuestStatus.COMPLETED);
+                    this.events.emit('mission-status-changed');
+
+                    const lines = [
+                        `Incrível! Você acertou ${score} de 3 questões.`,
+                        'Você é um verdadeiro especialista em arte agora!',
+                        'Pegue essa estrela dourada como recompensa!',
+                        'Você precisará delas ao longo da sua jornada!'
+                    ];
+                    // Find the NPC to play animation
+                    const npc = this.npcs.find(n => n['config'] && n['config'].missionId === missionId);
+                    if (npc) npc.play('npc_anim');
+
+                    this.questManager.setPendingResult(missionId, lines);
+                    this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
+                } else {
+                    this.questManager.setStatus(missionId, QuestStatus.READY_FOR_QUIZ);
+                    this.events.emit('mission-status-changed');
+
+                    const lines = [
+                        `Você acertou ${score} de 3 questões.`,
+                        'Talvez precise observar as obras com mais atenção...',
+                        'Tente ler as informações novamente!'
+                    ];
+                    this.questManager.setPendingResult(missionId, lines);
+                    this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
+                }
+            });
+        } else if (missionId === 'reliquias_antigas') {
+            this.quizUI.startQuiz([
+                {
+                    text: 'O que você encontrou no sarcófago?',
+                    options: ['Múmia', 'Tesouro', 'Vazio'],
+                    correctIndex: 0
+                },
+                {
+                    text: 'De qual era é o fóssil?',
+                    options: ['Cretáceo', 'Jurássico', 'Triássico'],
+                    correctIndex: 1
+                }
+            ], (score) => {
+                if (score >= 2) {
+                    this.questManager.setStatus(missionId, QuestStatus.COMPLETED);
+                    this.events.emit('mission-status-changed');
+
+                    const lines = [
+                        'Parabéns! Você entende de relíquias!',
+                        'Mais uma estrela para sua coleção!'
+                    ];
+                    const npc = this.npcs.find(n => n['config'] && n['config'].missionId === missionId);
+                    if (npc) npc.play('npc_anim');
+
+                    this.questManager.setPendingResult(missionId, lines);
+                    this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
+                } else {
+                    this.questManager.setStatus(missionId, QuestStatus.READY_FOR_QUIZ);
+                    this.events.emit('mission-status-changed');
+
+                    const lines = [
+                        'Acho que você precisa dar outra olhada nas relíquias.',
+                        'Preste bem atenção nos detalhes!'
+                    ];
+                    this.questManager.setPendingResult(missionId, lines);
+                    this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
+                }
+            });
+        }
     }
 
     private setupCollisions(collisionLayer: Phaser.Tilemaps.TilemapLayer | null) {
         if (collisionLayer) {
             this.physics.add.collider(this.player, collisionLayer);
-            this.physics.add.collider(this.npc, collisionLayer);
+            for (const npc of this.npcs) {
+                this.physics.add.collider(npc, collisionLayer);
+            }
         }
     }
 

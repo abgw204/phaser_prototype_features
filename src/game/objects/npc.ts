@@ -2,11 +2,22 @@ import * as Phaser from 'phaser';
 import { InteractionComponent } from './interactionComponent';
 import { QuestManager, QuestStatus } from './questManager';
 
+export interface NpcConfig {
+    missionId: string;
+    dialogues: {
+        intro: string[];
+        collecting: string[];
+        ready: string[];
+        completed: string[];
+    };
+}
+
 export class Npc extends Phaser.Physics.Arcade.Sprite {
     interaction: InteractionComponent;
     private questManager: QuestManager | null = null;
     private exclamationIcon: Phaser.GameObjects.Image;
     private missionAccepted: boolean = false;
+    private config: NpcConfig;
 
     static preload(scene: Phaser.Scene) {
         scene.load.spritesheet('npc_idle', 'npcIdle.png', {
@@ -34,8 +45,9 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
         });
     }
 
-    constructor(scene: Phaser.Scene, x: number, y: number) {
+    constructor(scene: Phaser.Scene, x: number, y: number, config: NpcConfig) {
         super(scene, x, y, 'npc');
+        this.config = config;
 
         scene.add.existing(this);
         scene.physics.add.existing(this);
@@ -71,29 +83,22 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
     private handleInteraction() {
         if (!this.questManager) return;
 
-        const status = this.questManager.getStatus();
+        const status = this.questManager.getStatus(this.config.missionId);
         const scene = this.scene as any; // Accessing DialogueSystem and QuizUI from Game scene
 
-        const pending = this.questManager.getPendingResult();
+        const pending = this.questManager.getPendingResult(this.config.missionId);
         if (pending) {
             scene.dialogueSystem.showDialogue(pending, () => {
-                this.questManager?.clearPendingResult();
+                this.questManager?.clearPendingResult(this.config.missionId);
             });
             return;
         }
 
         switch (status) {
             case QuestStatus.IDLE:
-                scene.dialogueSystem.showDialogue([
-                    'Olá, viajante! Bem-vindo ao museu.',
-                    'Vejo que você tem interesse em história e arte.',
-                    'Eu tenho um desafio para você!',
-                    'Explore o museu, interaja com as obras e aprenda sobre elas.',
-                    'Quando tiver coletado todas as informações, volte aqui para um quiz!',
-                    'Boa sorte!'
-                ], () => {
-                    this.questManager?.setStatus(QuestStatus.COLLECTING);
-                    this.scene.events.emit('mission-accepted', 'obras_famosas');
+                scene.dialogueSystem.showDialogue(this.config.dialogues.intro, () => {
+                    this.questManager?.setStatus(this.config.missionId, QuestStatus.COLLECTING);
+                    this.scene.events.emit('mission-accepted', this.config.missionId);
                     this.scene.events.emit('mission-status-changed');
 
                     this.missionAccepted = true;
@@ -104,30 +109,19 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
                 break;
 
             case QuestStatus.COLLECTING:
-                scene.dialogueSystem.showDialogue([
-                    'Ainda faltam informações para você coletar.',
-                    'Procure pela Estátua e pela Pintura Famosa no museu!'
-                ]);
+                scene.dialogueSystem.showDialogue(this.config.dialogues.collecting);
                 break;
 
             case QuestStatus.READY_FOR_QUIZ:
-                scene.dialogueSystem.showDialogue([
-                    'Excelente! Vejo que você explorou tudo.',
-                    'Agora vamos ver o quanto você aprendeu.',
-                    'Preparado para o Quiz?',
-                    'Vamos lá!'
-                ], () => {
-                    this.questManager?.setStatus(QuestStatus.QUIZ_ACTIVE);
+                scene.dialogueSystem.showDialogue(this.config.dialogues.ready, () => {
+                    this.questManager?.setStatus(this.config.missionId, QuestStatus.QUIZ_ACTIVE);
                     this.scene.events.emit('mission-status-changed');
-                    scene.startQuiz();
+                    scene.startQuiz(this.config.missionId);
                 });
                 break;
 
             case QuestStatus.COMPLETED:
-                scene.dialogueSystem.showDialogue([
-                    'Parabéns novamente por completar o desafio!',
-                    'Sinta-se à vontade para continuar explorando o museu.'
-                ]);
+                scene.dialogueSystem.showDialogue(this.config.dialogues.completed);
                 break;
         }
     }

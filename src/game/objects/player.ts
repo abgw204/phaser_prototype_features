@@ -24,7 +24,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         });
         scene.anims.create({
             key: 'walk',
-            frames: scene.anims.generateFrameNumbers('player_walk', { frames: [0, 1, 2, 3, 4, 5, 6, 7] }),
+            frames: scene.anims.generateFrameNumbers('player_walk', { frames: [1, 2, 3, 4, 5, 6, 7, 0] }),
             frameRate: 10,
             repeat: -1
         });

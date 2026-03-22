@@ -22,12 +22,13 @@ export class QuizUI {
     constructor(scene: Phaser.Scene) {
         this.scene = scene;
 
-        this.quizContainer = scene.add.container(1920 / 2, 1080 / 2).setScrollFactor(0);
+        const uiScene = scene.scene.get('UIScene');
+        this.quizContainer = uiScene.add.container(1920 / 2, 1080 / 2).setScrollFactor(0);
 
-        const quizBg = scene.add.rectangle(0, 0, 1000, 600, 0x000000, 0.95)
+        const quizBg = uiScene.add.rectangle(0, 0, 1000, 600, 0x000000, 0.95)
             .setStrokeStyle(6, 0xffffff);
 
-        this.questionText = scene.add.text(0, -200, '', {
+        this.questionText = uiScene.add.text(0, -200, '', {
             fontSize: '40px',
             color: '#ffffff',
             align: 'center',
@@ -76,7 +77,8 @@ export class QuizUI {
         this.selectedOptionIndex = 0;
 
         question.options.forEach((opt, idx) => {
-            const optText = this.scene.add.text(0, -50 + (idx * 80), opt, {
+            const uiScene = this.scene.scene.get('UIScene');
+            const optText = uiScene.add.text(0, -50 + (idx * 80), opt, {
                 fontSize: '32px',
                 color: idx === 0 ? '#ffff00' : '#ffffff'
             }).setOrigin(0.5);

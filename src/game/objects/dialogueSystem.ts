@@ -17,35 +17,36 @@ export class DialogueSystem {
         this.scene = scene;
 
         // Create Dialog UI (reusing InteractionComponent style)
-        this.dialogContainer = scene.add.container(1920 / 2, 1080 - 150).setScrollFactor(0);
+        const uiScene = scene.scene.get('UIScene');
+        this.dialogContainer = uiScene.add.container(1920 / 2, 1080 - 150).setScrollFactor(0);
 
-        const dialogBg = scene.add.rectangle(0, -50, 1200, 150, 0x000000, 0.9)
+        const dialogBg = uiScene.add.rectangle(0, -50, 1200, 150, 0x000000, 0.9)
             .setStrokeStyle(4, 0xffffff);
 
-        this.dialogText = scene.add.text(-550, -100, '', {
+        this.dialogText = uiScene.add.text(-550, -100, '', {
             fontSize: '32px',
             color: '#ffffff',
             wordWrap: { width: 1100 }
         });
 
-        this.nextIndicator = scene.add.text(553, -18, '▼', {
+        this.nextIndicator = uiScene.add.text(553, -18, '▼', {
             fontSize: '24px',
             color: '#00af09ff'
         }).setOrigin(0.5);
 
-        this.continueMessage = scene.add.text(380, -10, 'ESPAÇO para continuar', {
+        this.continueMessage = uiScene.add.text(380, -10, 'ESPAÇO para continuar', {
             fontSize: '24px',
             color: '#00af09ff'
         }).setOrigin(0.5);
 
         // ESC hint (bottom-left)
-        this.escHint = scene.add.text(-560, 0, 'ESC para fechar', {
+        this.escHint = uiScene.add.text(-560, 0, 'ESC para fechar', {
             fontSize: '22px',
             color: '#ff4d4d'
         }).setOrigin(0, 1);
 
         // Indicator animation
-        scene.tweens.add({
+        uiScene.tweens.add({
             targets: this.nextIndicator,
             y: '+=10',
             duration: 500,

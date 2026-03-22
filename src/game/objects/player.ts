@@ -7,9 +7,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     hp: number = 3;
     coinsCollected: number = 0;
     isInDialogue: boolean = false;
+    isInspecting: boolean = false;
 
     static preload(scene: Phaser.Scene) {
         scene.load.spritesheet('player_walk', 'player-walk.png', {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+        scene.load.spritesheet('player_inspect', 'player-inspect.png', {
             frameWidth: 32,
             frameHeight: 32
         });
@@ -28,6 +33,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             frameRate: 10,
             repeat: -1
         });
+        scene.anims.create({
+            key: 'inspect',
+            frames: scene.anims.generateFrameNumbers('player_inspect', { frames: [0, 1, 2, 3, 4, 5] }),
+            frameRate: 10,
+            repeat: 0
+        });
+        scene.anims.create({
+            key: 'stop_inspect',
+            frames: scene.anims.generateFrameNumbers('player_inspect', { frames: [3, 2, 1, 0] }),
+            frameRate: 10,
+            repeat: 0
+        });
     }
 
     constructor(scene: Phaser.Scene, x: number, y: number, texture: string) {
@@ -42,7 +59,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             left: Phaser.Input.Keyboard.KeyCodes.LEFT,
             right: Phaser.Input.Keyboard.KeyCodes.RIGHT,
             space: Phaser.Input.Keyboard.KeyCodes.SPACE,
-            E: Phaser.Input.Keyboard.KeyCodes.E
+            E: Phaser.Input.Keyboard.KeyCodes.E,
+            shift: Phaser.Input.Keyboard.KeyCodes.SHIFT
         }) as any;
         this.setScale(6.0);
         this.setDamping(true);
@@ -53,7 +71,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         this.once(Phaser.GameObjects.Events.DESTROY, () => {
             this.scene.events.off(Phaser.Scenes.Events.UPDATE, this.update, this);
         }, this);
-        this.play('idle');
+        this.play('inspect');
     }
 
     takeDamage(dirX: number) {
@@ -72,7 +90,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
         // Take damage logic
         this.isHit = true;
-        this.anims.play('hit', true);
         this.setVelocityY(-1700); // knockback up
         this.setVelocityX(dirX * 1500); // knockback horizontally
 
@@ -97,20 +114,32 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             return;
         }
 
+        if (Phaser.Input.Keyboard.JustDown(this.keys.shift)) {
+            this.isInspecting = !this.isInspecting;
+            this.scene.events.emit('inspect-mode-toggled', this.isInspecting);
+            if (this.isInspecting) {
+                this.anims.play('inspect', true);
+            } else {
+                this.anims.play('stop_inspect', true);
+            }
+        }
+
+        const isStopInspectPlaying = this.anims.currentAnim?.key === 'stop_inspect' && this.anims.isPlaying;
+
         if (this.keys.left.isDown && this.body) {
-            this.anims.play('walk', true);
-            this.body.velocity.x -= 100;
+            if (!this.isInspecting && !isStopInspectPlaying) this.anims.play('walk', true);
+            this.body.velocity.x -= this.isInspecting ? 40 : 100;
             this.setFlipX(true);
         }
         else if (this.keys.right.isDown && this.body) {
-            this.anims.play('walk', true);
-            this.body.velocity.x += 100;
+            if (!this.isInspecting && !isStopInspectPlaying) this.anims.play('walk', true);
+            this.body.velocity.x += this.isInspecting ? 40 : 100;
             this.setFlipX(false);
         }
-        else {
+        else if (!this.isInspecting && !isStopInspectPlaying) {
             this.anims.play('idle', true);
         }
-        if (this.body && this.keys.space.isDown && this.body.blocked.down) {
+        if (this.body && this.keys.space.isDown && this.body.blocked.down && !this.isInspecting && !isStopInspectPlaying) {
             this.setVelocityY(-2600);
         }
     }

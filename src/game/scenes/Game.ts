@@ -14,6 +14,7 @@ export class Game extends Scene {
     questManager: QuestManager;
     dialogueSystem: DialogueSystem;
     quizUI: QuizUI;
+    vignetteEffect: any;
 
     constructor() {
         super('Game');
@@ -111,6 +112,44 @@ export class Game extends Scene {
                 }
             });
         });
+
+        this.events.on('inspect-mode-toggled', (isInspecting: boolean) => {
+            if (isInspecting) {
+                if (this.vignetteEffect) {
+                    this.tweens.add({
+                        targets: this.vignetteEffect,
+                        radius: 0.6,
+                        strength: 0.6, // amount/strength fallback
+                        duration: 500,
+                        ease: 'Power2'
+                    });
+                }
+                this.tweens.add({
+                    targets: this.cameras.main,
+                    zoom: 1.8,
+                    duration: 500,
+                    ease: 'Power2',
+                    overwrite: true
+                });
+            } else {
+                if (this.vignetteEffect) {
+                    this.tweens.add({
+                        targets: this.vignetteEffect,
+                        radius: 0.9,
+                        strength: 0.6, // amount/strength fallback
+                        duration: 500,
+                        ease: 'Power2'
+                    });
+                }
+                this.tweens.add({
+                    targets: this.cameras.main,
+                    zoom: 1.0,
+                    duration: 500,
+                    ease: 'Power2',
+                    overwrite: true
+                });
+            }
+        });
     }
 
     private createAnimations() {
@@ -193,6 +232,7 @@ export class Game extends Scene {
             interactionDistance: 210,
             dialogText: 'ESTÁTUA: Esculpida em 1832. Representa a coragem dos heróis antigos.',
             infoKey: 'statue_info',
+            requireInspectionMode: true,
             onInfoCollected: (key) => {
                 const changed = this.questManager.collectInfo(key);
                 if (changed) this.events.emit('mission-progress-changed');
@@ -203,6 +243,7 @@ export class Game extends Scene {
             interactionDistance: 130,
             dialogText: 'PINTURA: Criada por Vincent no ano de 1889. Suas cores vibrantes são únicas.',
             infoKey: 'painting_info',
+            requireInspectionMode: true,
             onInfoCollected: (key) => {
                 const changed = this.questManager.collectInfo(key);
                 if (changed) this.events.emit('mission-progress-changed');
@@ -213,6 +254,7 @@ export class Game extends Scene {
             interactionDistance: 130,
             dialogText: 'SARCÓFAGO: Uma antiga urna funerária egípcia.',
             infoKey: 'sarcophagus_info',
+            requireInspectionMode: true,
             onInfoCollected: (key) => {
                 const changed = this.questManager.collectInfo(key);
                 if (changed) this.events.emit('mission-progress-changed');
@@ -223,6 +265,7 @@ export class Game extends Scene {
             interactionDistance: 130,
             dialogText: 'FÓSSIL: Restos petrificados de uma criatura do período Jurássico.',
             infoKey: 'fossil_info',
+            requireInspectionMode: true,
             onInfoCollected: (key) => {
                 const changed = this.questManager.collectInfo(key);
                 if (changed) this.events.emit('mission-progress-changed');
@@ -375,6 +418,9 @@ export class Game extends Scene {
 
     private setupCameras() {
         this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
+        if (this.cameras.main.postFX) {
+            this.vignetteEffect = this.cameras.main.postFX.addVignette(0.5, 0.5, 0.9, 0.6);
+        }
     }
 
     update(_time: number, _delta: number) {

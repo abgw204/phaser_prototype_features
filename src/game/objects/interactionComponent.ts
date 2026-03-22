@@ -9,6 +9,7 @@ export interface InteractionOptions {
     gapY?: number;
     onInteract?: () => void;
     onInfoCollected?: (infoKey: string) => void;
+    requireInspectionMode?: boolean;
 }
 
 export class InteractionComponent {
@@ -28,6 +29,7 @@ export class InteractionComponent {
     private infoKey: string | null = null;
     private onInteract: (() => void) | null = null;
     private onInfoCollected: ((key: string) => void) | null = null;
+    private requireInspectionMode: boolean;
 
     private keyHandler: (event: KeyboardEvent) => void;
     private lastInteractionTime: number = 0;
@@ -46,6 +48,7 @@ export class InteractionComponent {
         this.infoKey = options?.infoKey ?? null;
         this.onInteract = options?.onInteract ?? null;
         this.onInfoCollected = options?.onInfoCollected ?? null;
+        this.requireInspectionMode = options?.requireInspectionMode ?? false;
 
         // Create Prompt UI
         this.promptContainer = scene.add.container(parent.x, parent.y - 30);
@@ -60,10 +63,11 @@ export class InteractionComponent {
         this.promptContainer.setVisible(false);
 
         // Create Dialog UI
-        this.dialogContainer = scene.add.container(1920 / 2, 1080 - 180).setScrollFactor(0);
-        const dialogBg = scene.add.rectangle(0, 0, 1200, 100, 0x000000, 0.8)
+        const uiScene = scene.scene.get('UIScene');
+        this.dialogContainer = uiScene.add.container(1920 / 2, 1080 - 180).setScrollFactor(0);
+        const dialogBg = uiScene.add.rectangle(0, 0, 1200, 100, 0x000000, 0.8)
             .setStrokeStyle(4, 0xffffff);
-        const dialogText = scene.add.text(-500, -33, this.dialogMessage, {
+        const dialogText = uiScene.add.text(-500, -33, this.dialogMessage, {
             fontSize: '32px',
             color: '#ffffff',
             wordWrap: { width: 1000 }
@@ -78,7 +82,10 @@ export class InteractionComponent {
                 const now = Date.now();
                 if (now - this.lastInteractionTime < this.INTERACTION_COOLDOWN) return;
 
-                if (this.isPromptVisible) {
+                const isPlayerInspecting = (this.playerRef as any)?.isInspecting;
+                const canInteract = this.requireInspectionMode ? isPlayerInspecting : !isPlayerInspecting;
+
+                if (this.isPromptVisible && canInteract) {
                     this.lastInteractionTime = now;
 
                     if (this.dialogueLines) {
@@ -128,10 +135,13 @@ export class InteractionComponent {
             this.playerRef.x, this.playerRef.y
         );
 
-        if (dist <= this.interactionDistance && !this.isPromptVisible) {
+        const isPlayerInspecting = (this.playerRef as any).isInspecting;
+        const canInteract = this.requireInspectionMode ? isPlayerInspecting : !isPlayerInspecting;
+
+        if (dist <= this.interactionDistance && !this.isPromptVisible && canInteract) {
             this.isPromptVisible = true;
             this.promptContainer.setVisible(true);
-        } else if (dist > this.interactionDistance && this.isPromptVisible) {
+        } else if ((dist > this.interactionDistance || !canInteract) && this.isPromptVisible) {
             this.isPromptVisible = false;
             this.promptContainer.setVisible(false);
             if (this.isDialogVisible) {
@@ -144,10 +154,12 @@ export class InteractionComponent {
         this.isDialogVisible = true;
         this.dialogContainer.setVisible(true);
 
+        const isPlayerInspecting = (this.playerRef as any)?.isInspecting;
+
         // Use a Tween instead of zoomTo for better interrupt handling
         this.scene.tweens.add({
             targets: this.scene.cameras.main,
-            zoom: 1.2,
+            zoom: isPlayerInspecting ? 1.8 : 1.2,
             duration: 400,
             ease: 'Power2',
             overwrite: true
@@ -160,9 +172,11 @@ export class InteractionComponent {
         this.isDialogVisible = false;
         this.dialogContainer.setVisible(false);
 
+        const isPlayerInspecting = (this.playerRef as any)?.isInspecting;
+
         this.scene.tweens.add({
             targets: this.scene.cameras.main,
-            zoom: 1,
+            zoom: isPlayerInspecting ? 1.8 : 1,
             duration: 400,
             ease: 'Power2',
             overwrite: true

@@ -68,6 +68,17 @@ export class UIScene extends Scene {
     private onMissionProgressHandler!: () => void;
     private onMissionStatusHandler!: () => void;
 
+    private onGameDialogueEndedHandler!: () => void;
+
+    private lastMissionStatuses: Map<string, QuestStatus> = new Map();
+
+    private pendingMissionCompleteToastCount: number = 0;
+
+    private missionCompleteToast: Phaser.GameObjects.Container | null = null;
+    private missionCompleteToastBg!: Phaser.GameObjects.Rectangle;
+    private missionCompleteToastText!: Phaser.GameObjects.Text;
+    private missionCompleteToastHideTimer: Phaser.Time.TimerEvent | null = null;
+
     private onTabHandler!: (event: KeyboardEvent) => void;
     private onQHandler!: (event: KeyboardEvent) => void;
 
@@ -105,6 +116,7 @@ export class UIScene extends Scene {
         this.createStarsPanel();
         this.createInventoryOverlay();
         this.createControlsOverlay();
+        this.createMissionCompleteToast();
         this.layout();
 
         this.onResize = () => this.layout();
@@ -113,11 +125,14 @@ export class UIScene extends Scene {
         const gameScene = this.scene.get('Game') as Scene;
         this.onMissionAcceptedHandler = (missionId: string) => this.onMissionAccepted(missionId);
         this.onMissionProgressHandler = () => this.refreshAll();
-        this.onMissionStatusHandler = () => this.refreshAll();
+        this.onMissionStatusHandler = () => this.onMissionStatusChanged();
 
         gameScene.events.on('mission-accepted', this.onMissionAcceptedHandler);
         gameScene.events.on('mission-progress-changed', this.onMissionProgressHandler);
         gameScene.events.on('mission-status-changed', this.onMissionStatusHandler);
+
+        this.onGameDialogueEndedHandler = () => this.onGameDialogueEnded();
+        gameScene.events.on('dialogue-ended', this.onGameDialogueEndedHandler);
 
         this.onTabHandler = (event: KeyboardEvent) => {
             event.preventDefault();
@@ -148,6 +163,7 @@ export class UIScene extends Scene {
             gameScene.events.off('mission-accepted', this.onMissionAcceptedHandler);
             gameScene.events.off('mission-progress-changed', this.onMissionProgressHandler);
             gameScene.events.off('mission-status-changed', this.onMissionStatusHandler);
+            if (this.onGameDialogueEndedHandler) gameScene.events.off('dialogue-ended', this.onGameDialogueEndedHandler);
             this.input.keyboard?.off('keydown-TAB', this.onTabHandler);
             this.input.keyboard?.off('keydown-Q', this.onQHandler);
             if (this.onEscControlsHandler) this.input.keyboard?.off('keydown', this.onEscControlsHandler);
@@ -155,7 +171,87 @@ export class UIScene extends Scene {
             gameScene.events.off('interaction-prompt-hidden', this.onInteractionPromptHiddenHandler);
         });
 
+        // Seed last-known statuses so we only toast on transitions.
+        for (const missionId of Object.keys(this.missionDefs)) {
+            this.lastMissionStatuses.set(missionId, this.questManager.getStatus(missionId));
+        }
+
         this.refreshAll();
+    }
+
+    private createMissionCompleteToast() {
+        const cx = this.scale.width / 2;
+        const y = Math.max(90, Math.floor(this.scale.height * 0.16));
+
+        this.missionCompleteToast = this.add.container(cx, y);
+        this.missionCompleteToast.setScrollFactor(0);
+        this.missionCompleteToast.setDepth(8800);
+        this.missionCompleteToast.setVisible(false);
+
+        this.missionCompleteToastBg = this.add.rectangle(0, 0, 860, 120, 0x000000, 0.85);
+        this.missionCompleteToastBg.setStrokeStyle(4, 0xffffff, 0.95);
+        this.missionCompleteToastBg.setOrigin(0.5);
+
+        this.missionCompleteToastText = this.add.text(0, 0, 'Missão concluída\nAperte TAB para ver as relíquias', {
+            fontSize: '28px',
+            color: '#ffffff',
+            align: 'center',
+            wordWrap: { width: 800, useAdvancedWrap: true },
+            lineSpacing: 8
+        }).setOrigin(0.5);
+
+        this.missionCompleteToast.add([
+            this.missionCompleteToastBg,
+            this.missionCompleteToastText
+        ]);
+
+        this.layoutMissionCompleteToast(this.scale.width, this.scale.height);
+    }
+
+    private layoutMissionCompleteToast(w: number, h: number) {
+        if (!this.missionCompleteToast) return;
+        const cx = w / 2;
+        const y = Math.max(90, Math.floor(h * 0.16));
+        this.missionCompleteToast.setPosition(cx, y);
+
+        // Keep width responsive so it stays readable on small screens.
+        const maxW = Math.min(860, Math.floor(w * 0.92));
+        this.missionCompleteToastBg.setSize(maxW, 120);
+        this.missionCompleteToastText.setWordWrapWidth(Math.max(240, maxW - 60), true);
+    }
+
+    private showMissionCompleteToast() {
+        if (!this.missionCompleteToast) return;
+
+        if (this.missionCompleteToastHideTimer) {
+            this.missionCompleteToastHideTimer.remove(false);
+            this.missionCompleteToastHideTimer = null;
+        }
+
+        this.missionCompleteToast.setVisible(true);
+        this.missionCompleteToast.setAlpha(0);
+        this.missionCompleteToast.setScale(0.98);
+
+        this.tweens.add({
+            targets: this.missionCompleteToast,
+            alpha: 1,
+            scale: 1,
+            duration: 180,
+            ease: 'Quad.Out'
+        });
+
+        this.missionCompleteToastHideTimer = this.time.delayedCall(3200, () => {
+            if (!this.missionCompleteToast) return;
+            this.tweens.add({
+                targets: this.missionCompleteToast,
+                alpha: 0,
+                duration: 220,
+                ease: 'Quad.In',
+                onComplete: () => {
+                    this.missionCompleteToast?.setVisible(false);
+                }
+            });
+        });
     }
 
     private createPhasePanel() {
@@ -271,6 +367,34 @@ export class UIScene extends Scene {
 
         this.layoutInventory(w, h);
         this.layoutControls(w, h);
+        this.layoutMissionCompleteToast(w, h);
+    }
+
+    private onMissionStatusChanged() {
+        // Detect transitions to COMPLETED to show the toast once.
+        for (const missionId of Object.keys(this.missionDefs)) {
+            const prev = this.lastMissionStatuses.get(missionId) ?? QuestStatus.IDLE;
+            const next = this.questManager.getStatus(missionId);
+            if (next === QuestStatus.COMPLETED && prev !== QuestStatus.COMPLETED) {
+                // TAB is blocked while the dialogue UI is visible, so queue the toast
+                // and show it after the player closes the post-mission dialogue.
+                this.pendingMissionCompleteToastCount++;
+            }
+            this.lastMissionStatuses.set(missionId, next);
+        }
+
+        this.refreshAll();
+    }
+
+    private onGameDialogueEnded() {
+        if (this.pendingMissionCompleteToastCount <= 0) return;
+
+        // Show a single toast even if multiple missions completed back-to-back.
+        this.pendingMissionCompleteToastCount = 0;
+
+        // Small delay so the SPACE that closes the dialogue doesn't feel like
+        // it immediately triggers another UI event.
+        this.time.delayedCall(120, () => this.showMissionCompleteToast());
     }
 
     private createControlsOverlay() {

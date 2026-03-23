@@ -90,6 +90,16 @@ export class UIScene extends Scene {
     private controlsIsVisible: boolean = false;
     private onEscControlsHandler!: (event: KeyboardEvent) => void;
 
+    private inspectTutorialOverlay!: Phaser.GameObjects.Container;
+    private inspectTutorialBg!: Phaser.GameObjects.Rectangle;
+    private inspectTutorialTitle!: Phaser.GameObjects.Text;
+    private inspectTutorialImage!: Phaser.GameObjects.Image;
+    private inspectTutorialBody!: Phaser.GameObjects.Text;
+    private inspectTutorialEscHint!: Phaser.GameObjects.Text;
+    private inspectTutorialIsVisible: boolean = false;
+    private inspectTutorialHasBeenShown: boolean = false;
+    private onEscInspectTutorialHandler!: (event: KeyboardEvent) => void;
+
     private activeInteractionPrompts: Set<Phaser.GameObjects.GameObject> = new Set();
     private onInteractionPromptShownHandler!: (obj: Phaser.GameObjects.GameObject) => void;
     private onInteractionPromptHiddenHandler!: (obj: Phaser.GameObjects.GameObject) => void;
@@ -116,6 +126,7 @@ export class UIScene extends Scene {
         this.createStarsPanel();
         this.createInventoryOverlay();
         this.createControlsOverlay();
+        this.createInspectTutorialOverlay();
         this.createMissionCompleteToast();
         this.layout();
 
@@ -155,7 +166,8 @@ export class UIScene extends Scene {
         };
         gameScene.events.on('interaction-prompt-shown', this.onInteractionPromptShownHandler);
         gameScene.events.on('interaction-prompt-hidden', this.onInteractionPromptHiddenHandler);
-
+        
+        // Ativa o guia de controles no início da cena
         this.showControlsOverlay();
 
         this.events.once('shutdown', () => {
@@ -167,6 +179,7 @@ export class UIScene extends Scene {
             this.input.keyboard?.off('keydown-TAB', this.onTabHandler);
             this.input.keyboard?.off('keydown-Q', this.onQHandler);
             if (this.onEscControlsHandler) this.input.keyboard?.off('keydown', this.onEscControlsHandler);
+            if (this.onEscInspectTutorialHandler) this.input.keyboard?.off('keydown', this.onEscInspectTutorialHandler);
             gameScene.events.off('interaction-prompt-shown', this.onInteractionPromptShownHandler);
             gameScene.events.off('interaction-prompt-hidden', this.onInteractionPromptHiddenHandler);
         });
@@ -367,7 +380,129 @@ export class UIScene extends Scene {
 
         this.layoutInventory(w, h);
         this.layoutControls(w, h);
+        this.layoutInspectTutorial(w, h);
         this.layoutMissionCompleteToast(w, h);
+    }
+
+    private createInspectTutorialOverlay() {
+        const cx = this.scale.width / 2;
+        const cy = this.scale.height / 2;
+
+        this.inspectTutorialOverlay = this.add.container(cx, cy);
+        this.inspectTutorialOverlay.setScrollFactor(0);
+        this.inspectTutorialOverlay.setDepth(8600);
+        this.inspectTutorialOverlay.setVisible(false);
+
+        const panelW = 980;
+        const panelH = 560;
+
+        this.inspectTutorialBg = this.add.rectangle(0, 0, panelW, panelH, 0x000000, 0.85);
+        this.inspectTutorialBg.setStrokeStyle(4, 0xffffff, 0.85);
+
+        this.inspectTutorialTitle = this.add.text(0, 0, 'Modo inspecionar', {
+            fontSize: '44px',
+            color: '#ffffff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5, 0);
+
+        this.inspectTutorialImage = this.add.image(0, 0, 'inspect_example').setOrigin(0.5, 0);
+
+        this.inspectTutorialBody = this.add.text(
+            0,
+            0,
+            "Use a tecla '⇧' (SHIFT) para entrar no modo inspecionar. Nesse modo, você conseguirá interagir com as relíquias presentes no museu.",
+            {
+                fontSize: '28px',
+                color: '#ffffff',
+                align: 'center',
+                lineSpacing: 10,
+                wordWrap: { width: panelW - 140, useAdvancedWrap: true }
+            }
+        ).setOrigin(0.5, 0);
+
+        this.inspectTutorialEscHint = this.add.text(0, 0, 'ESC para fechar', {
+            fontSize: '22px',
+            color: '#ff4d4d'
+        }).setOrigin(0, 1);
+
+        this.inspectTutorialOverlay.add([
+            this.inspectTutorialBg,
+            this.inspectTutorialTitle,
+            this.inspectTutorialImage,
+            this.inspectTutorialBody,
+            this.inspectTutorialEscHint
+        ]);
+
+        this.layoutInspectTutorial(this.scale.width, this.scale.height);
+    }
+
+    private layoutInspectTutorial(w: number, h: number) {
+        if (!this.inspectTutorialOverlay || !this.inspectTutorialBg) return;
+
+        this.inspectTutorialOverlay.setPosition(w / 2, h / 2);
+
+        const bw = this.inspectTutorialBg.width;
+        const bh = this.inspectTutorialBg.height;
+
+        this.inspectTutorialTitle.setPosition(0, -bh / 2 + 26);
+
+        const imageTopY = -bh / 2 + 105;
+        this.inspectTutorialImage.setPosition(0, imageTopY);
+
+        const maxImageW = bw - 180;
+        const maxImageH = 260;
+        const scale = Math.min(maxImageW / this.inspectTutorialImage.width, maxImageH / this.inspectTutorialImage.height, 1);
+        this.inspectTutorialImage.setScale(scale);
+
+        const textY = imageTopY + (this.inspectTutorialImage.displayHeight + 26);
+        this.inspectTutorialBody.setPosition(0, textY);
+
+        this.inspectTutorialEscHint.setPosition(-bw / 2 + 46, bh / 2 - 26);
+    }
+
+    private showInspectTutorialOverlay() {
+        if (this.inspectTutorialIsVisible) return;
+        this.inspectTutorialIsVisible = true;
+        this.inspectTutorialHasBeenShown = true;
+
+        const gameScene = this.scene.get('Game') as Scene;
+        gameScene.events.emit('inspect-tutorial-opened');
+
+        this.inspectTutorialOverlay.setVisible(true);
+        this.inspectTutorialOverlay.setAlpha(0);
+        this.tweens.add({
+            targets: this.inspectTutorialOverlay,
+            alpha: 1,
+            duration: 160,
+            ease: 'Quad.Out'
+        });
+
+        this.onEscInspectTutorialHandler = (event: KeyboardEvent) => {
+            if (event.key.toLowerCase() === 'escape') {
+                this.hideInspectTutorialOverlay();
+            }
+        };
+        this.input.keyboard?.on('keydown', this.onEscInspectTutorialHandler);
+    }
+
+    private hideInspectTutorialOverlay() {
+        if (!this.inspectTutorialIsVisible) return;
+        this.inspectTutorialIsVisible = false;
+
+        const gameScene = this.scene.get('Game') as Scene;
+        gameScene.events.emit('inspect-tutorial-closed');
+
+        if (this.onEscInspectTutorialHandler) this.input.keyboard?.off('keydown', this.onEscInspectTutorialHandler);
+
+        this.tweens.add({
+            targets: this.inspectTutorialOverlay,
+            alpha: 0,
+            duration: 120,
+            ease: 'Quad.In',
+            onComplete: () => {
+                this.inspectTutorialOverlay.setVisible(false);
+            }
+        });
     }
 
     private onMissionStatusChanged() {
@@ -421,7 +556,6 @@ export class UIScene extends Scene {
         this.controlsBody = this.add.text(0, 0,
             'WASD ou SETAS: andar\n' +
             'E: interagir\n' +
-            'SHIFT: ativar modo inspecionar (para interagir com relíquias)\n' +
             'TAB: abrir o mapa das relíquias\n' +
             'Q: ver novamente os controles', {
             fontSize: '28px',
@@ -485,6 +619,7 @@ export class UIScene extends Scene {
 
     private canShowControlsOverlay(): boolean {
         if (this.controlsIsVisible) return false;
+        if (this.inspectTutorialIsVisible) return false;
         if (this.inventoryIsVisible) return false;
         if (this.phaseCompletePanel) return false;
 
@@ -515,6 +650,9 @@ export class UIScene extends Scene {
             ease: 'Quad.In',
             onComplete: () => {
                 this.controlsOverlay.setVisible(false);
+                if (!this.inspectTutorialHasBeenShown) {
+                    this.showInspectTutorialOverlay();
+                }
             }
         });
     }

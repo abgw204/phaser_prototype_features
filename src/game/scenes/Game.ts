@@ -19,6 +19,7 @@ export class Game extends Scene {
     private currentGrayscale: number = 0.7;
     private isInventoryOpen: boolean = false;
     private isControlsOverlayOpen: boolean = false;
+    private isInspectTutorialOpen: boolean = false;
 
     constructor() {
         super('Game');
@@ -33,6 +34,7 @@ export class Game extends Scene {
         this.load.image('tiles', 'museum-full-level/spritesheet.png');
         this.load.image('exclamation', 'exclamation.png');
         this.load.image('star', 'star.png');
+        this.load.image('inspect_example', 'inspect_example.png');
 
         this.load.spritesheet('sparkle', 'sparkle.png', {
             frameWidth: 32,
@@ -119,7 +121,7 @@ export class Game extends Scene {
             // the dialogue doesn't trigger a jump.
             this.time.delayedCall(200, () => {
                 // Only restore control if we didn't immediately start another dialogue/quiz
-                if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isInventoryOpen) {
+                if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isInventoryOpen && !this.isControlsOverlayOpen && !this.isInspectTutorialOpen) {
                     if (this.player) this.player.isInDialogue = false;
 
                     // Ensure NPCs return to their idle animation
@@ -139,7 +141,7 @@ export class Game extends Scene {
 
         this.events.on('inventory-closed', () => {
             this.isInventoryOpen = false;
-            if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible) {
+            if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isControlsOverlayOpen && !this.isInspectTutorialOpen) {
                 if (this.player) this.player.isInDialogue = false;
             }
         });
@@ -151,7 +153,19 @@ export class Game extends Scene {
 
         this.events.on('controls-overlay-closed', () => {
             this.isControlsOverlayOpen = false;
-            if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isInventoryOpen) {
+            if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isInventoryOpen && !this.isInspectTutorialOpen) {
+                if (this.player) this.player.isInDialogue = false;
+            }
+        });
+
+        this.events.on('inspect-tutorial-opened', () => {
+            this.isInspectTutorialOpen = true;
+            if (this.player) this.player.isInDialogue = true;
+        });
+
+        this.events.on('inspect-tutorial-closed', () => {
+            this.isInspectTutorialOpen = false;
+            if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isInventoryOpen && !this.isControlsOverlayOpen) {
                 if (this.player) this.player.isInDialogue = false;
             }
         });

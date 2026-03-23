@@ -25,7 +25,7 @@ export class Game extends Scene {
     }
 
     preload() {
-        this.load.setPath('src/game/Assets');
+        this.load.setPath('assets/');
         Player.preload(this);
         Npc.preload(this);
         Enemy.preload(this);

@@ -10,6 +10,13 @@ export interface InteractionOptions {
     onInteract?: () => void;
     onInfoCollected?: (infoKey: string) => void;
     requireInspectionMode?: boolean;
+
+    // Hint system (sparkle animation after inactivity)
+    enableHint?: boolean;
+    hintDelayMs?: number;
+    hintOffsetX?: number;
+    hintOffsetY?: number;
+    hintScale?: number;
 }
 
 export class InteractionComponent {
@@ -38,6 +45,15 @@ export class InteractionComponent {
     private lastInteractionTime: number = 0;
     private readonly INTERACTION_COOLDOWN: number = 250;
 
+    private hintEnabled: boolean;
+    private hintDelayMs: number;
+    private hintOffsetX: number;
+    private hintOffsetY: number;
+    private hintScale: number;
+    private hintCompleted: boolean = false;
+    private hintSprite: Phaser.GameObjects.Sprite | null = null;
+    private hintTimer: Phaser.Time.TimerEvent | null = null;
+
     constructor(
         scene: Phaser.Scene,
         parent: Phaser.GameObjects.GameObject & { x: number; y: number },
@@ -52,6 +68,15 @@ export class InteractionComponent {
         this.onInteract = options?.onInteract ?? null;
         this.onInfoCollected = options?.onInfoCollected ?? null;
         this.requireInspectionMode = options?.requireInspectionMode ?? false;
+
+        this.hintEnabled = options?.enableHint ?? false;
+        this.hintDelayMs = options?.hintDelayMs ?? 15000;
+        this.hintOffsetX = options?.hintOffsetX ?? 0;
+        this.hintOffsetY = options?.hintOffsetY ?? -90;
+        this.hintScale = options?.hintScale ?? 3;
+
+        // Arm hint timer immediately; hint does not depend on prompt visibility.
+        this.armHint();
 
         // Create Prompt UI
         this.promptContainer = scene.add.container(parent.x, parent.y - 30);
@@ -101,6 +126,8 @@ export class InteractionComponent {
 
                 if (this.isPromptVisible && canInteract) {
                     this.lastInteractionTime = now;
+
+                    this.markInteracted();
 
                     if (this.dialogueLines) {
                         // Complex dialogue (managed by scene/DialogueSystem)
@@ -162,6 +189,10 @@ export class InteractionComponent {
     update() {
         this.promptContainer.setPosition(this.parent.x, this.parent.y - 40);
 
+        if (this.hintSprite) {
+            this.hintSprite.setPosition(this.parent.x + this.hintOffsetX, this.parent.y + this.hintOffsetY);
+        }
+
         if (!this.playerRef) return;
 
         const dist = Phaser.Math.Distance.Between(
@@ -175,12 +206,76 @@ export class InteractionComponent {
         if (dist <= this.interactionDistance && !this.isPromptVisible && canInteract) {
             this.isPromptVisible = true;
             this.promptContainer.setVisible(true);
+            this.scene.events.emit('interaction-prompt-shown', this.parent);
         } else if ((dist > this.interactionDistance || !canInteract) && this.isPromptVisible) {
             this.isPromptVisible = false;
             this.promptContainer.setVisible(false);
+            this.scene.events.emit('interaction-prompt-hidden', this.parent);
             if (this.isDialogVisible) {
                 this.hideDialog();
             }
+        }
+    }
+
+    private armHint() {
+        if (!this.hintEnabled) return;
+        if (this.hintCompleted) return;
+        if (this.hintTimer) return;
+
+        this.hintTimer = this.scene.time.delayedCall(this.hintDelayMs, () => {
+            this.hintTimer = null;
+            if (this.hintCompleted) return;
+            this.showHint();
+        });
+    }
+
+    private disarmHint() {
+        if (this.hintTimer) {
+            this.hintTimer.remove(false);
+            this.hintTimer = null;
+        }
+        this.hideHint();
+    }
+
+    private showHint() {
+        if (!this.hintEnabled) return;
+        if (this.hintCompleted) return;
+
+        if (!this.hintSprite) {
+            this.hintSprite = this.scene.add.sprite(
+                this.parent.x + this.hintOffsetX,
+                this.parent.y + this.hintOffsetY,
+                'sparkle',
+                0
+            );
+            this.hintSprite.setOrigin(0.5, 0.5);
+            this.hintSprite.setScale(this.hintScale);
+            this.hintSprite.setDepth(50);
+
+            this.hintSprite.once(Phaser.GameObjects.Events.DESTROY, () => {
+                this.hintSprite = null;
+            });
+        }
+
+        this.hintSprite.setVisible(true);
+        if (this.scene.anims.exists('sparkle_hint_anim')) {
+            this.hintSprite.play('sparkle_hint_anim', true);
+        }
+    }
+
+    private hideHint() {
+        if (!this.hintSprite) return;
+        this.hintSprite.setVisible(false);
+        this.hintSprite.stop();
+    }
+
+    private markInteracted() {
+        if (this.hintCompleted) return;
+        this.hintCompleted = true;
+        this.disarmHint();
+        if (this.hintSprite) {
+            this.hintSprite.destroy();
+            this.hintSprite = null;
         }
     }
 
@@ -222,8 +317,17 @@ export class InteractionComponent {
 
 
     destroy() {
+        if (this.isPromptVisible) {
+            this.scene.events.emit('interaction-prompt-hidden', this.parent);
+        }
         this.scene.input.keyboard?.off('keydown', this.keyHandler);
         this.promptContainer.destroy();
         this.dialogContainer.destroy();
+
+        this.disarmHint();
+        if (this.hintSprite) {
+            this.hintSprite.destroy();
+            this.hintSprite = null;
+        }
     }
 }

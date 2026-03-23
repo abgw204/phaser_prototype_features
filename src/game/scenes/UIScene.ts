@@ -69,6 +69,19 @@ export class UIScene extends Scene {
     private onMissionStatusHandler!: () => void;
 
     private onTabHandler!: (event: KeyboardEvent) => void;
+    private onQHandler!: (event: KeyboardEvent) => void;
+
+    private controlsOverlay!: Phaser.GameObjects.Container;
+    private controlsBg!: Phaser.GameObjects.Rectangle;
+    private controlsTitle!: Phaser.GameObjects.Text;
+    private controlsBody!: Phaser.GameObjects.Text;
+    private controlsEscHint!: Phaser.GameObjects.Text;
+    private controlsIsVisible: boolean = false;
+    private onEscControlsHandler!: (event: KeyboardEvent) => void;
+
+    private activeInteractionPrompts: Set<Phaser.GameObjects.GameObject> = new Set();
+    private onInteractionPromptShownHandler!: (obj: Phaser.GameObjects.GameObject) => void;
+    private onInteractionPromptHiddenHandler!: (obj: Phaser.GameObjects.GameObject) => void;
 
     constructor() {
         super('UIScene');
@@ -91,6 +104,7 @@ export class UIScene extends Scene {
         this.createPhasePanel();
         this.createStarsPanel();
         this.createInventoryOverlay();
+        this.createControlsOverlay();
         this.layout();
 
         this.onResize = () => this.layout();
@@ -111,12 +125,34 @@ export class UIScene extends Scene {
         };
         this.input.keyboard?.on('keydown-TAB', this.onTabHandler);
 
+        this.onQHandler = (event: KeyboardEvent) => {
+            event.preventDefault();
+            if (!this.canShowControlsOverlay()) return;
+            this.showControlsOverlay();
+        };
+        this.input.keyboard?.on('keydown-Q', this.onQHandler);
+
+        this.onInteractionPromptShownHandler = (obj: Phaser.GameObjects.GameObject) => {
+            this.activeInteractionPrompts.add(obj);
+        };
+        this.onInteractionPromptHiddenHandler = (obj: Phaser.GameObjects.GameObject) => {
+            this.activeInteractionPrompts.delete(obj);
+        };
+        gameScene.events.on('interaction-prompt-shown', this.onInteractionPromptShownHandler);
+        gameScene.events.on('interaction-prompt-hidden', this.onInteractionPromptHiddenHandler);
+
+        this.showControlsOverlay();
+
         this.events.once('shutdown', () => {
             this.scale.off('resize', this.onResize);
             gameScene.events.off('mission-accepted', this.onMissionAcceptedHandler);
             gameScene.events.off('mission-progress-changed', this.onMissionProgressHandler);
             gameScene.events.off('mission-status-changed', this.onMissionStatusHandler);
             this.input.keyboard?.off('keydown-TAB', this.onTabHandler);
+            this.input.keyboard?.off('keydown-Q', this.onQHandler);
+            if (this.onEscControlsHandler) this.input.keyboard?.off('keydown', this.onEscControlsHandler);
+            gameScene.events.off('interaction-prompt-shown', this.onInteractionPromptShownHandler);
+            gameScene.events.off('interaction-prompt-hidden', this.onInteractionPromptHiddenHandler);
         });
 
         this.refreshAll();
@@ -234,6 +270,128 @@ export class UIScene extends Scene {
         }
 
         this.layoutInventory(w, h);
+        this.layoutControls(w, h);
+    }
+
+    private createControlsOverlay() {
+        const cx = this.scale.width / 2;
+        const cy = this.scale.height / 2;
+
+        this.controlsOverlay = this.add.container(cx, cy);
+        this.controlsOverlay.setScrollFactor(0);
+        this.controlsOverlay.setDepth(8500);
+        this.controlsOverlay.setVisible(false);
+
+        const panelW = 980;
+        const panelH = 420;
+
+        this.controlsBg = this.add.rectangle(0, 0, panelW, panelH, 0x000000, 0.85);
+        this.controlsBg.setStrokeStyle(4, 0xffffff, 0.85);
+
+        this.controlsTitle = this.add.text(0, 0, 'Controles', {
+            fontSize: '44px',
+            color: '#ffffff',
+            fontStyle: 'bold'
+        }).setOrigin(0.5, 0);
+
+        this.controlsBody = this.add.text(0, 0,
+            'WASD ou SETAS: andar\n' +
+            'E: interagir\n' +
+            'SHIFT: ativar modo inspecionar (para interagir com relíquias)\n' +
+            'Q: ver novamente os controles', {
+            fontSize: '28px',
+            color: '#ffffff',
+            align: 'left',
+            lineSpacing: 10,
+            wordWrap: { width: panelW - 140, useAdvancedWrap: true }
+        }).setOrigin(0.5, 0);
+
+        this.controlsEscHint = this.add.text(0, 0, 'ESC para fechar', {
+            fontSize: '22px',
+            color: '#ff4d4d'
+        }).setOrigin(0, 1);
+
+        this.controlsOverlay.add([
+            this.controlsBg,
+            this.controlsTitle,
+            this.controlsBody,
+            this.controlsEscHint
+        ]);
+
+        this.layoutControls(this.scale.width, this.scale.height);
+    }
+
+    private layoutControls(w: number, h: number) {
+        if (!this.controlsOverlay || !this.controlsBg) return;
+
+        this.controlsOverlay.setPosition(w / 2, h / 2);
+
+        const bw = this.controlsBg.width;
+        const bh = this.controlsBg.height;
+
+        this.controlsTitle.setPosition(0, -bh / 2 + 26);
+        this.controlsBody.setPosition(0, -bh / 2 + 110);
+        this.controlsEscHint.setPosition(-bw / 2 + 46, bh / 2 - 26);
+    }
+
+    private showControlsOverlay() {
+        if (this.controlsIsVisible) return;
+        this.controlsIsVisible = true;
+
+        const gameScene = this.scene.get('Game') as Scene;
+        gameScene.events.emit('controls-overlay-opened');
+
+        this.controlsOverlay.setVisible(true);
+        this.controlsOverlay.setAlpha(0);
+        this.tweens.add({
+            targets: this.controlsOverlay,
+            alpha: 1,
+            duration: 160,
+            ease: 'Quad.Out'
+        });
+
+        this.onEscControlsHandler = (event: KeyboardEvent) => {
+            if (event.key.toLowerCase() === 'escape') {
+                this.hideControlsOverlay();
+            }
+        };
+        this.input.keyboard?.on('keydown', this.onEscControlsHandler);
+    }
+
+    private canShowControlsOverlay(): boolean {
+        if (this.controlsIsVisible) return false;
+        if (this.inventoryIsVisible) return false;
+        if (this.phaseCompletePanel) return false;
+
+        // Block if player is currently near an interactable (prompt visible)
+        if (this.activeInteractionPrompts.size > 0) return false;
+
+        const gameScene = this.scene.get('Game') as any;
+        if (gameScene?.dialogueSystem?.isVisible) return false;
+        if (gameScene?.quizUI?.isVisible) return false;
+        if (gameScene?.isInventoryOpen) return false;
+        if (gameScene?.player?.isInDialogue) return false;
+        return true;
+    }
+
+    private hideControlsOverlay() {
+        if (!this.controlsIsVisible) return;
+        this.controlsIsVisible = false;
+
+        const gameScene = this.scene.get('Game') as Scene;
+        gameScene.events.emit('controls-overlay-closed');
+
+        if (this.onEscControlsHandler) this.input.keyboard?.off('keydown', this.onEscControlsHandler);
+
+        this.tweens.add({
+            targets: this.controlsOverlay,
+            alpha: 0,
+            duration: 120,
+            ease: 'Quad.In',
+            onComplete: () => {
+                this.controlsOverlay.setVisible(false);
+            }
+        });
     }
 
     private layoutInventory(w: number, h: number) {

@@ -60,6 +60,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             down: Phaser.Input.Keyboard.KeyCodes.DOWN,
             left: Phaser.Input.Keyboard.KeyCodes.LEFT,
             right: Phaser.Input.Keyboard.KeyCodes.RIGHT,
+            w: Phaser.Input.Keyboard.KeyCodes.W,
+            a: Phaser.Input.Keyboard.KeyCodes.A,
+            s: Phaser.Input.Keyboard.KeyCodes.S,
+            d: Phaser.Input.Keyboard.KeyCodes.D,
             space: Phaser.Input.Keyboard.KeyCodes.SPACE,
             E: Phaser.Input.Keyboard.KeyCodes.E,
             shift: Phaser.Input.Keyboard.KeyCodes.SHIFT
@@ -130,12 +134,16 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
         const isStopInspectPlaying = this.anims.currentAnim?.key === 'stop_inspect' && this.anims.isPlaying;
 
-        if (this.keys.left.isDown && this.body) {
+        const leftDown = this.keys.left.isDown || this.keys.a.isDown;
+        const rightDown = this.keys.right.isDown || this.keys.d.isDown;
+        const jumpDown = this.keys.space.isDown || this.keys.up.isDown || this.keys.w.isDown;
+
+        if (leftDown && this.body) {
             if (!this.isInspecting && !isStopInspectPlaying) this.anims.play('walk', true);
             this.body.velocity.x -= this.isInspecting ? 25 : 90;
             this.setFlipX(true);
         }
-        else if (this.keys.right.isDown && this.body) {
+        else if (rightDown && this.body) {
             if (!this.isInspecting && !isStopInspectPlaying) this.anims.play('walk', true);
             this.body.velocity.x += this.isInspecting ? 25 : 90;
             this.setFlipX(false);
@@ -143,7 +151,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         else if (!this.isInspecting && !isStopInspectPlaying) {
             this.anims.play('idle', true);
         }
-        if (this.body && this.keys.space.isDown && this.body.blocked.down && !this.isInspecting && !isStopInspectPlaying) {
+
+        if (this.body && jumpDown && this.body.blocked.down && !this.isInspecting && !isStopInspectPlaying) {
             this.setVelocityY(-2600);
         }
     }

@@ -18,6 +18,7 @@ export class Game extends Scene {
     colorMatrix: any;
     private currentGrayscale: number = 0.7;
     private isInventoryOpen: boolean = false;
+    private isControlsOverlayOpen: boolean = false;
 
     constructor() {
         super('Game');
@@ -32,6 +33,11 @@ export class Game extends Scene {
         this.load.image('tiles', 'museum-full-level/spritesheet.png');
         this.load.image('exclamation', 'exclamation.png');
         this.load.image('star', 'star.png');
+
+        this.load.spritesheet('sparkle', 'sparkle.png', {
+            frameWidth: 32,
+            frameHeight: 32
+        });
 
         this.load.image('relic_statue', 'relics/statue_relic.png');
         this.load.image('relic_painting', 'relics/painting_relic.png');
@@ -68,6 +74,8 @@ export class Game extends Scene {
             { id: 'reliquias_antigas', requiredInfos: ['sarcophagus_info', 'fossil_info'] }
         ]);
 
+        this.setupEvents();
+
         this.scene.launch('UIScene', {
             phaseTitle: 'Museu antigo',
             missionsTotal: 2,
@@ -96,7 +104,10 @@ export class Game extends Scene {
         this.createEntities();
         this.setupCollisions(collisionLayer);
         this.setupCameras();
-        this.setupEvents();
+
+        if (this.isControlsOverlayOpen && this.player) {
+            this.player.isInDialogue = true;
+        }
     }
 
     private setupEvents() {
@@ -129,6 +140,18 @@ export class Game extends Scene {
         this.events.on('inventory-closed', () => {
             this.isInventoryOpen = false;
             if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible) {
+                if (this.player) this.player.isInDialogue = false;
+            }
+        });
+
+        this.events.on('controls-overlay-opened', () => {
+            this.isControlsOverlayOpen = true;
+            if (this.player) this.player.isInDialogue = true;
+        });
+
+        this.events.on('controls-overlay-closed', () => {
+            this.isControlsOverlayOpen = false;
+            if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isInventoryOpen) {
                 if (this.player) this.player.isInDialogue = false;
             }
         });
@@ -176,6 +199,15 @@ export class Game extends Scene {
         Player.createAnims(this);
         Npc.createAnims(this);
         Enemy.createAnims(this);
+
+        if (!this.anims.exists('sparkle_hint_anim')) {
+            this.anims.create({
+                key: 'sparkle_hint_anim',
+                frames: this.anims.generateFrameNumbers('sparkle', { start: 0, end: 5 }),
+                frameRate: 8,
+                repeat: -1
+            });
+        }
     }
 
     private createEntities() {
@@ -255,6 +287,10 @@ export class Game extends Scene {
             dialogText: 'Uma estátua gélida e cinzenta. A placa gasta pelo tempo diz: "Esculpida no ano de 1832,  representando a rigidez da alma humana".',
             infoKey: 'statue_info',
             requireInspectionMode: true,
+            enableHint: true,
+            hintDelayMs: 145000,
+            hintOffsetX: 20,
+            hintOffsetY: 42,
             onInfoCollected: (key) => {
                 const changed = this.questManager.collectInfo(key);
                 if (changed) this.events.emit('mission-progress-changed');
@@ -266,6 +302,10 @@ export class Game extends Scene {
             dialogText: 'A tela está coberta por uma névoa escura, mas você consegue ler a assinatura borrada: \'Vincent\'. Ao lado, um pedaço de papel rasgado revela que a obra foi concluída em 1889, capturando uma noite estrelada antes que o mundo perdesse sua luz.',
             infoKey: 'painting_info',
             requireInspectionMode: true,
+            enableHint: true,
+            hintDelayMs: 135000,
+            hintOffsetX: 40,
+            hintOffsetY: -140,
             onInfoCollected: (key) => {
                 const changed = this.questManager.collectInfo(key);
                 if (changed) this.events.emit('mission-progress-changed');
@@ -277,6 +317,10 @@ export class Game extends Scene {
             dialogText: 'Um túmulo pesado de uma civilização apagada. Ao afastar a tampa pesada, você não encontra ouro, mas sim uma Múmia preservada. Uma prova de que a humanidade sempre tentou lutar contra o esquecimento.',
             infoKey: 'sarcophagus_info',
             requireInspectionMode: true,
+            enableHint: true,
+            hintDelayMs: 140000,
+            hintOffsetX: 0,
+            hintOffsetY: -120,
             onInfoCollected: (key) => {
                 const changed = this.questManager.collectInfo(key);
                 if (changed) this.events.emit('mission-progress-changed');
@@ -288,6 +332,10 @@ export class Game extends Scene {
             dialogText: 'A marca de uma criatura gigantesca encravada na pedra. A placa do museu, quase apagada, descreve a criatura como um monarca do período Jurássico. Uma era muito antes do homem existir.',
             infoKey: 'fossil_info',
             requireInspectionMode: true,
+            enableHint: true,
+            hintDelayMs: 160000,
+            hintOffsetX: 0,
+            hintOffsetY: -100,
             onInfoCollected: (key) => {
                 const changed = this.questManager.collectInfo(key);
                 if (changed) this.events.emit('mission-progress-changed');
@@ -301,6 +349,10 @@ export class Game extends Scene {
             gapY: -60, // Posiciona o prompt 'E' acima do texto (floatText = -60)
             gapX: 15,
             dialogueLines: [], // Empty array natively triggers `onInteract` directly, without the default `showDialog()`
+            enableHint: false,
+            hintDelayMs: 15000,
+            hintOffsetX: 0,
+            hintOffsetY: -120,
             onInteract: () => {
                 const collected = this.questManager.getTotalCompletedMissions();
                 const uiScene = this.scene.get('UIScene') as any;

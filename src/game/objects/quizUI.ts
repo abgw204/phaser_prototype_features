@@ -47,6 +47,12 @@ export class QuizUI {
                 this.selectOption();
             }
         });
+
+        scene.input.keyboard?.on('keydown-ENTER', () => {
+            if (this.isVisible) {
+                this.selectOption();
+            }
+        });
     }
 
     startQuiz(questions: QuizQuestion[], onComplete: (score: number) => void) {

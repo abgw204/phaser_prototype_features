@@ -298,6 +298,7 @@ export class UIScene extends Scene {
             'WASD ou SETAS: andar\n' +
             'E: interagir\n' +
             'SHIFT: ativar modo inspecionar (para interagir com relíquias)\n' +
+            'TAB: abrir o mapa das relíquias\n' +
             'Q: ver novamente os controles', {
             fontSize: '28px',
             color: '#ffffff',

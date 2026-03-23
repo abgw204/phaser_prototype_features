@@ -25,15 +25,15 @@ export class QuizUI {
         const uiScene = scene.scene.get('UIScene');
         this.quizContainer = uiScene.add.container(1920 / 2, 1080 / 2).setScrollFactor(0);
 
-        const quizBg = uiScene.add.rectangle(0, 0, 1000, 600, 0x000000, 0.95)
+        const quizBg = uiScene.add.rectangle(0, 0, 1100, 750, 0x000000, 0.95)
             .setStrokeStyle(6, 0xffffff);
 
-        this.questionText = uiScene.add.text(0, -200, '', {
+        this.questionText = uiScene.add.text(0, -320, '', {
             fontSize: '40px',
             color: '#ffffff',
             align: 'center',
-            wordWrap: { width: 900 }
-        }).setOrigin(0.5);
+            wordWrap: { width: 1000 }
+        }).setOrigin(0.5, 0);
 
         this.quizContainer.add([quizBg, this.questionText]);
         this.quizContainer.setVisible(false);
@@ -78,7 +78,7 @@ export class QuizUI {
 
         question.options.forEach((opt, idx) => {
             const uiScene = this.scene.scene.get('UIScene');
-            const optText = uiScene.add.text(0, -50 + (idx * 80), opt, {
+            const optText = uiScene.add.text(0, 20 + (idx * 85), opt, {
                 fontSize: '32px',
                 color: idx === 0 ? '#ffff00' : '#ffffff'
             }).setOrigin(0.5);

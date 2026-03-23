@@ -19,6 +19,8 @@ export class InteractionComponent {
 
     private promptContainer: Phaser.GameObjects.Container;
     private dialogContainer: Phaser.GameObjects.Container;
+    private dialogBg: Phaser.GameObjects.Rectangle;
+    private dialogText: Phaser.GameObjects.Text;
 
     public isPromptVisible: boolean = false;
     private isDialogVisible: boolean = false;
@@ -65,16 +67,18 @@ export class InteractionComponent {
         // Create Dialog UI
         const uiScene = scene.scene.get('UIScene');
         this.dialogContainer = uiScene.add.container(1920 / 2, 1080 - 180).setScrollFactor(0);
-        const dialogBg = uiScene.add.rectangle(0, 0, 1200, 100, 0x000000, 0.8)
+        this.dialogBg = uiScene.add.rectangle(0, 0, 1200, 100, 0x000000, 0.8)
             .setStrokeStyle(4, 0xffffff);
-        const dialogText = uiScene.add.text(-500, -33, this.dialogMessage, {
+        this.dialogText = uiScene.add.text(-500, 0, this.dialogMessage, {
             fontSize: '32px',
             color: '#ffffff',
             wordWrap: { width: 1000 }
-        });
-        this.dialogContainer.add([dialogBg, dialogText]);
+        }).setOrigin(0, 0.5);
+        this.dialogContainer.add([this.dialogBg, this.dialogText]);
         this.dialogContainer.setVisible(false);
         this.dialogContainer.setDepth(100);
+
+        this.updateDialogLayout();
 
         // Setup Key Listener
         this.keyHandler = (event: KeyboardEvent) => {
@@ -120,9 +124,25 @@ export class InteractionComponent {
 
     setDialogMessage(message: string) {
         this.dialogMessage = message;
-        // Update the text object in container if it exists
-        const textObj = this.dialogContainer.getAt(1) as Phaser.GameObjects.Text;
-        if (textObj) textObj.setText(message);
+        if (this.dialogText) {
+            this.dialogText.setText(message);
+            this.updateDialogLayout();
+        }
+    }
+
+    private updateDialogLayout() {
+        if (!this.dialogBg || !this.dialogText) return;
+
+        const padding = 60;
+        const minHeight = 100;
+        const textHeight = this.dialogText.displayHeight;
+        const newHeight = Math.max(minHeight, textHeight + padding);
+
+        this.dialogBg.setSize(1200, newHeight);
+        
+        // Adjust container Y if necessary so it grows upward or stays fixed
+        // Currently it's at 1080 - 180 = 900.
+        // If it grows, we might want it to stay above the bottom area.
     }
 
     update() {
@@ -151,6 +171,7 @@ export class InteractionComponent {
     }
 
     private showDialog() {
+        this.updateDialogLayout();
         this.isDialogVisible = true;
         this.dialogContainer.setVisible(true);
 

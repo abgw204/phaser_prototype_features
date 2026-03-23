@@ -18,6 +18,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             frameWidth: 32,
             frameHeight: 32
         });
+        scene.load.audio('magnifying_up', 'sound/magnifying_up.mp3');
+        scene.load.audio('magnifying_down', 'sound/magnifying_down.mp3');
     }
 
     static createAnims(scene: Phaser.Scene) {
@@ -36,13 +38,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         scene.anims.create({
             key: 'inspect',
             frames: scene.anims.generateFrameNumbers('player_inspect', { frames: [0, 1, 2, 3, 4, 5] }),
-            frameRate: 10,
+            frameRate: 14,
             repeat: 0
         });
         scene.anims.create({
             key: 'stop_inspect',
             frames: scene.anims.generateFrameNumbers('player_inspect', { frames: [3, 2, 1, 0] }),
-            frameRate: 10,
+            frameRate: 14,
             repeat: 0
         });
     }
@@ -119,8 +121,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             this.scene.events.emit('inspect-mode-toggled', this.isInspecting);
             if (this.isInspecting) {
                 this.anims.play('inspect', true);
+                this.scene.sound.play('magnifying_up');
             } else {
                 this.anims.play('stop_inspect', true);
+                this.scene.sound.play('magnifying_down');
             }
         }
 
@@ -128,12 +132,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
         if (this.keys.left.isDown && this.body) {
             if (!this.isInspecting && !isStopInspectPlaying) this.anims.play('walk', true);
-            this.body.velocity.x -= this.isInspecting ? 40 : 100;
+            this.body.velocity.x -= this.isInspecting ? 25 : 90;
             this.setFlipX(true);
         }
         else if (this.keys.right.isDown && this.body) {
             if (!this.isInspecting && !isStopInspectPlaying) this.anims.play('walk', true);
-            this.body.velocity.x += this.isInspecting ? 40 : 100;
+            this.body.velocity.x += this.isInspecting ? 25 : 90;
             this.setFlipX(false);
         }
         else if (!this.isInspecting && !isStopInspectPlaying) {

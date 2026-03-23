@@ -42,16 +42,16 @@ export class QuestManager {
 
     collectInfo(infoKey: string): boolean {
         let changedAny = false;
-        
+
         for (const [id, q] of this.quests.entries()) {
             if (q.status !== QuestStatus.COLLECTING) continue;
-            
+
             // Only collect if the quest actually requires this infoKey
             if (q.requiredInfos.includes(infoKey)) {
                 const before = q.collectedInfos.size;
                 q.collectedInfos.add(infoKey);
                 const changed = q.collectedInfos.size !== before;
-                
+
                 if (changed) {
                     changedAny = true;
                     if (this.hasCollectedAll(id)) {

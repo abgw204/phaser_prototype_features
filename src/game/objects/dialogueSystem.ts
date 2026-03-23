@@ -3,8 +3,10 @@ import * as Phaser from 'phaser';
 export class DialogueSystem {
     private scene: Phaser.Scene;
     private dialogContainer: Phaser.GameObjects.Container;
+    private dialogBg: Phaser.GameObjects.Rectangle;
     private dialogText: Phaser.GameObjects.Text;
     private nextIndicator: Phaser.GameObjects.Text;
+    private nextIndicatorContainer: Phaser.GameObjects.Container;
     private continueMessage: Phaser.GameObjects.Text;
     private escHint: Phaser.GameObjects.Text;
 
@@ -18,29 +20,32 @@ export class DialogueSystem {
 
         // Create Dialog UI (reusing InteractionComponent style)
         const uiScene = scene.scene.get('UIScene');
-        this.dialogContainer = uiScene.add.container(1920 / 2, 1080 - 150).setScrollFactor(0);
+        this.dialogContainer = uiScene.add.container(1920 / 2, 1080 - 200).setScrollFactor(0);
 
-        const dialogBg = uiScene.add.rectangle(0, -50, 1200, 150, 0x000000, 0.9)
-            .setStrokeStyle(4, 0xffffff);
+        this.dialogBg = uiScene.add.rectangle(0, 0, 1200, 150, 0x000000, 0.9)
+            .setStrokeStyle(4, 0xffffff)
+            .setOrigin(0.5, 0);
 
-        this.dialogText = uiScene.add.text(-550, -100, '', {
+        this.dialogText = uiScene.add.text(-550, 30, '', {
             fontSize: '32px',
             color: '#ffffff',
             wordWrap: { width: 1100 }
-        });
+        }).setOrigin(0, 0);
 
-        this.nextIndicator = uiScene.add.text(553, -18, '▼', {
+        this.nextIndicatorContainer = uiScene.add.container(553, 20);
+        this.nextIndicator = uiScene.add.text(0, 15, '▼', {
             fontSize: '24px',
             color: '#00af09ff'
         }).setOrigin(0.5);
+        this.nextIndicatorContainer.add(this.nextIndicator);
 
-        this.continueMessage = uiScene.add.text(380, -10, 'ESPAÇO para continuar', {
+        this.continueMessage = uiScene.add.text(380, 50, 'ESPAÇO para continuar', {
             fontSize: '24px',
             color: '#00af09ff'
         }).setOrigin(0.5);
 
         // ESC hint (bottom-left)
-        this.escHint = uiScene.add.text(-560, 0, 'ESC para fechar', {
+        this.escHint = uiScene.add.text(-560, 60, 'ESC para fechar', {
             fontSize: '22px',
             color: '#ff4d4d'
         }).setOrigin(0, 1);
@@ -55,9 +60,9 @@ export class DialogueSystem {
         });
 
         this.dialogContainer.add([
-            dialogBg,
+            this.dialogBg,
             this.dialogText,
-            this.nextIndicator,
+            this.nextIndicatorContainer,
             this.continueMessage,
             this.escHint,
         ]);
@@ -114,10 +119,31 @@ export class DialogueSystem {
         this.dialogText.setText(this.lines[this.currentLineIndex]);
 
         // Hide indicator on last line
-        this.nextIndicator.setVisible(!isLastLine);
+        this.nextIndicatorContainer.setVisible(!isLastLine);
 
         // Update message text for clarity
         this.continueMessage.setText(isLastLine ? 'ESPAÇO para fechar' : 'ESPAÇO para continuar');
+
+        this.updateDialogLayout();
+    }
+
+    private updateDialogLayout() {
+        if (!this.dialogBg || !this.dialogText) return;
+
+        const paddingH = 30; // Top padding
+        const paddingB = 80; // Bottom padding for controls
+        const minHeight = 100;
+        const textHeight = this.dialogText.displayHeight;
+        const newHeight = Math.max(minHeight, textHeight + paddingH + paddingB);
+
+        this.dialogBg.setSize(1200, newHeight);
+
+        // Anchor indicators/messages to the bottom of the current box height
+        this.nextIndicatorContainer.setY(newHeight - 45); // Slightly higher since indicator floats inside
+        this.continueMessage.setY(newHeight - 20);
+        this.escHint.setY(newHeight - 10);
+
+        // Text is already at fixed Y=30 (from constructor) with origin (0,0)
     }
 
     private closeDialogue(complete: boolean) {

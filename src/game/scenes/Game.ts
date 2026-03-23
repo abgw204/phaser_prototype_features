@@ -15,6 +15,8 @@ export class Game extends Scene {
     dialogueSystem: DialogueSystem;
     quizUI: QuizUI;
     vignetteEffect: any;
+    colorMatrix: any;
+    private currentGrayscale: number = 0.7;
 
     constructor() {
         super('Game');
@@ -164,57 +166,59 @@ export class Game extends Scene {
             missionId: 'obras_famosas',
             dialogues: {
                 intro: [
-                    'Olá, viajante! Bem-vindo ao museu.',
-                    'Vejo que você tem interesse em história e arte.',
-                    'Eu tenho um desafio para você!',
-                    'Explore o museu, interaja com as obras e aprenda sobre elas.',
-                    'Quando tiver coletado todas as informações, volte aqui para um quiz!',
-                    'Boa sorte!'
+                    'Curador Viajante... Finalmente você chegou. Meus olhos já mal conseguem distinguir a luz.',
+                    'O Grande Esquecimento roubou os tons, as pinceladas... roubou a alma deste salão.',
+                    'Mas o seu mapa ainda brilha. Há esperança.',
+                    'Preciso que você encontre a Pintura Famosa e a nossa Estátua mais antiga. Leia seus fragmentos de história.',
+                    'Se você conseguir se lembrar dos detalhes delas, poderemos trazer as cores de volta a esta ala.',
+                    'Vá, antes que a tela fique em branco para sempre.'
                 ],
                 collecting: [
-                    'Ainda faltam informações para você coletar.',
-                    'Procure pela Estátua e pela Pintura Famosa no museu!'
+                    'O cinza ainda domina este salão, Curador.',
+                    'Encontre a Estátua e a Pintura Famosa. Observe os anos, os criadores... Cada detalhe é uma faísca de cor.'
                 ],
                 ready: [
-                    'Excelente! Vejo que você explorou tudo.',
-                    'Agora vamos ver o quanto você aprendeu.',
-                    'Preparado para o Quiz?',
-                    'Vamos lá!'
+                    'Sinto uma vibração no ar... Você tocou as obras antigas, não tocou?',
+                    'As memórias estão frescas em sua mente.',
+                    'Chegou a hora. Mostre-me o que aprendeu. Se suas memórias forem precisas, quebraremos o Esquecimento!',
+                    'Vamos invocar as cores?'
                 ],
                 completed: [
-                    'Parabéns novamente por completar o desafio!',
-                    'Sinta-se à vontade para continuar explorando o museu.'
+                    'Olhe! O azul, o amarelo... As cores estão voltando! A memória de Vincent vive novamente!',
+                    'Obrigado, Curador Viajante. Esta ala do museu nunca mais será esquecida.'
                 ]
             }
         };
-
         const npc2Config = {
             missionId: 'reliquias_antigas',
             dialogues: {
                 intro: [
-                    'Saudações! Sou o curador de antiguidades.',
-                    'Temos peças muito antigas por aqui.',
-                    'Encontre o sarcófago e o fóssil.',
-                    'Depois volte para conversarmos!'
+                    'Passos? Há tanto tempo não ouço passos neste corredor de poeira e sombras.',
+                    'Sou o Guardião das Eras. As fundações do mundo estão se desfazendo com o Esquecimento.',
+                    'Se perdermos nosso passado mais profundo, não teremos chão para o futuro.',
+                    'Busque as relíquias primordiais nas sombras: o Sarcófago dos reis antigos e o Fóssil cravado na pedra.',
+                    'Traga-me o conhecimento deles, Curador.'
                 ],
                 collecting: [
-                    'Você ainda não encontrou todas as relíquias.',
-                    'Continue procurando pelo sarcófago e fóssil.'
+                    'As areias do tempo estão escorrendo, e a névoa do Esquecimento continua espessa.',
+                    'Você ainda não desvendou os segredos do Sarcófago e do Fóssil. Continue buscando.'
                 ],
                 ready: [
-                    'Ah, você encontrou as relíquias!',
-                    'Pronto para testar seus conhecimentos?'
+                    'A poeira ao seu redor parece brilhar... Você encontrou as fundações do passado!',
+                    'Agora, devemos ancorar essa realidade. Prove que você detém a verdadeira memória das relíquias.',
+                    'Prepare-se, Curador. O tempo nos julgará agora.'
                 ],
                 completed: [
-                    'Muito bem! Você é um expert em relíquias.',
-                    'Continue sua visita.'
+                    'As linhas do tempo estão restauradas! O passado profundo respira mais uma vez.',
+                    'Sua jornada é nobre, Curador. Leve essa luz para os próximos salões.'
                 ]
+            }
             /*if (this.body) {
             // Offset visual sprite 25 pixels down relative to the collision body
             // scale is 6.0, so 25 pixels in world = 25 / 6 = 4.166 in unscaled offset
             // Default offset after setSize(13, 13) on 16x16 sprite is 1.5.
             (this.body as Phaser.Physics.Arcade.Body).setOffset(1.5, 1.5 - (-10 / 6.0));
-        }*/}
+        }*/
         };
 
         this.rat = new Enemy(this, 1000, 310, 1);
@@ -230,7 +234,7 @@ export class Game extends Scene {
 
         const statue_btn = new InteractiveButton(this, 212, 220, {
             interactionDistance: 210,
-            dialogText: 'ESTÁTUA: Esculpida em 1832. Representa a coragem dos heróis antigos.',
+            dialogText: 'Uma estátua gélida e cinzenta. A placa gasta pelo tempo diz: "Esculpida no ano de 1832,  representando a rigidez da alma humana".',
             infoKey: 'statue_info',
             requireInspectionMode: true,
             onInfoCollected: (key) => {
@@ -241,7 +245,7 @@ export class Game extends Scene {
 
         const painting_btn = new InteractiveButton(this, 1272, 375, {
             interactionDistance: 130,
-            dialogText: 'PINTURA: Criada por Vincent no ano de 1889. Suas cores vibrantes são únicas.',
+            dialogText: 'A tela está coberta por uma névoa escura, mas você consegue ler a assinatura borrada: \'Vincent\'. Ao lado, um pedaço de papel rasgado revela que a obra foi concluída em 1889, capturando uma noite estrelada antes que o mundo perdesse sua luz.',
             infoKey: 'painting_info',
             requireInspectionMode: true,
             onInfoCollected: (key) => {
@@ -252,7 +256,7 @@ export class Game extends Scene {
 
         const sarcophagus_btn = new InteractiveButton(this, 2275, 350, {
             interactionDistance: 130,
-            dialogText: 'SARCÓFAGO: Uma antiga urna funerária egípcia.',
+            dialogText: 'Um túmulo pesado de uma civilização apagada. Ao afastar a tampa pesada, você não encontra ouro, mas sim uma Múmia preservada. Uma prova de que a humanidade sempre tentou lutar contra o esquecimento.',
             infoKey: 'sarcophagus_info',
             requireInspectionMode: true,
             onInfoCollected: (key) => {
@@ -263,7 +267,7 @@ export class Game extends Scene {
 
         const fossil_btn = new InteractiveButton(this, 2769, 350, {
             interactionDistance: 130,
-            dialogText: 'FÓSSIL: Restos petrificados de uma criatura do período Jurássico.',
+            dialogText: 'A marca de uma criatura gigantesca encravada na pedra. A placa do museu, quase apagada, descreve a criatura como um monarca do período Jurássico. Uma era muito antes do homem existir.',
             infoKey: 'fossil_info',
             requireInspectionMode: true,
             onInfoCollected: (key) => {
@@ -291,7 +295,7 @@ export class Game extends Scene {
         const floatStar = this.add.image(-10, 0, 'star').setScale(2.5);
         const endPhase_floatText = this.add.text(6, 0, `0/${maxStars}`, {
             fontSize: '22px',
-            color: '#ffff00',
+            color: '#ffff8bff',
             fontStyle: 'bold',
             stroke: '#000000',
             strokeThickness: 4
@@ -321,43 +325,45 @@ export class Game extends Scene {
         if (missionId === 'obras_famosas') {
             this.quizUI.startQuiz([
                 {
-                    text: 'Em que ano a estátua foi esculpida?',
+                    text: 'Para ancorarmos a estátua de volta à nossa realidade, me diga: em que ano a rigidez da alma humana foi cravada na pedra?',
                     options: ['1832', '1850', '1901'],
                     correctIndex: 0
                 },
                 {
-                    text: 'Quem criou a pintura famosa?',
+                    text: 'A tela estava coberta por uma névoa escura. De quem é a assinatura que luta para não ser apagada pelo Esquecimento?',
                     options: ['Leonardo', 'Vincent', 'Picasso'],
                     correctIndex: 1
                 },
                 {
-                    text: 'Em que ano a pintura foi criada?',
+                    text: 'Antes de o mundo perder a sua luz, em que ano aquele céu estrelado foi eternizado na pintura?',
                     options: ['1789', '1889', '1920'],
                     correctIndex: 1
                 }
-            ], (score) => {
+            ], (score: number) => {
                 if (score >= 3) {
                     this.questManager.setStatus(missionId, QuestStatus.COMPLETED);
                     this.events.emit('mission-status-changed');
 
                     const lines = [
-                        `Incrível! Você acertou ${score} de 3 questões.`,
-                        'Você é um verdadeiro especialista em arte agora!',
+                        `Incrível! Você demonstrou grande conhecimento!`,
+                        'E conseguiu trazer um pouco de cor de volta para este salão!',
                         'Pegue essa estrela dourada como recompensa!',
-                        'Você precisará delas ao longo da sua jornada!'
+                        'Você precisará delas ao longo da sua jornada!',
+                        'Esse é um grande passo para restaurar a luz do mundo!'
                     ];
                     // Find the NPC to play animation
                     const npc = this.npcs.find(n => n['config'] && n['config'].missionId === missionId);
                     if (npc) npc.play('npc_anim');
 
                     this.questManager.setPendingResult(missionId, lines);
+                    this.updateGrayscale();
                     this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
                 } else {
                     this.questManager.setStatus(missionId, QuestStatus.READY_FOR_QUIZ);
                     this.events.emit('mission-status-changed');
 
                     const lines = [
-                        `Você acertou ${score} de 3 questões.`,
+                        'Hmm...',
                         'Talvez precise observar as obras com mais atenção...',
                         'Tente ler as informações novamente!'
                     ];
@@ -368,35 +374,39 @@ export class Game extends Scene {
         } else if (missionId === 'reliquias_antigas') {
             this.quizUI.startQuiz([
                 {
-                    text: 'O que você encontrou no sarcófago?',
-                    options: ['Múmia', 'Tesouro', 'Vazio'],
-                    correctIndex: 0
+                    text: 'Ao abrir o pesado túmulo antigo, qual foi a prova que você encontrou de que a humanidade sempre lutou contra o tempo e a morte?',
+                    options: ['Ouro e Tesouros', 'Uma Múmia preservada', 'Vazio'],
+                    correctIndex: 1
                 },
                 {
-                    text: 'De qual era é o fóssil?',
+                    text: 'O monarca encravado na pedra viveu eras antes do primeiro ser humano respirar. A qual período o fóssil pertence?',
                     options: ['Cretáceo', 'Jurássico', 'Triássico'],
                     correctIndex: 1
                 }
-            ], (score) => {
+            ], (score: number) => {
                 if (score >= 2) {
                     this.questManager.setStatus(missionId, QuestStatus.COMPLETED);
                     this.events.emit('mission-status-changed');
 
                     const lines = [
-                        'Parabéns! Você entende de relíquias!',
-                        'Mais uma estrela para sua coleção!'
+                        'Parabéns! Agora você entende as relíquias antigas!',
+                        'O salão está mais iluminado.',
+                        'Pegue essa estrela dourada, ela trará luz ao seu caminho.',
+                        'Você precisará delas para avançar em sua jornada!'
                     ];
                     const npc = this.npcs.find(n => n['config'] && n['config'].missionId === missionId);
                     if (npc) npc.play('npc_anim');
 
                     this.questManager.setPendingResult(missionId, lines);
+                    this.updateGrayscale();
                     this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
                 } else {
                     this.questManager.setStatus(missionId, QuestStatus.READY_FOR_QUIZ);
                     this.events.emit('mission-status-changed');
 
                     const lines = [
-                        'Acho que você precisa dar outra olhada nas relíquias.',
+                        'Hmm... Não estamos tão certos sobre as relíquias.',
+                        'Acho que você precisa dar outra olhada.',
                         'Preste bem atenção nos detalhes!'
                     ];
                     this.questManager.setPendingResult(missionId, lines);
@@ -420,7 +430,31 @@ export class Game extends Scene {
         this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
         if (this.cameras.main.postFX) {
             this.vignetteEffect = this.cameras.main.postFX.addVignette(0.5, 0.5, 0.9, 0.6);
+            this.colorMatrix = this.cameras.main.postFX.addColorMatrix();
+            this.colorMatrix.grayscale(0.7);
         }
+    }
+
+    private updateGrayscale() {
+        if (!this.colorMatrix) return;
+
+        const completed = this.questManager.getTotalCompletedMissions();
+        let targetGray = 0.7;
+
+        if (completed === 1) targetGray = 0.3;
+        else if (completed >= 2) targetGray = 0;
+
+        const grayObj = { val: this.currentGrayscale };
+        this.tweens.add({
+            targets: grayObj,
+            val: targetGray,
+            duration: 2000,
+            ease: 'Power2',
+            onUpdate: () => {
+                this.currentGrayscale = grayObj.val;
+                this.colorMatrix.grayscale(this.currentGrayscale);
+            }
+        });
     }
 
     update(_time: number, _delta: number) {

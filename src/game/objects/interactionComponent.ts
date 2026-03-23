@@ -21,6 +21,7 @@ export class InteractionComponent {
     private dialogContainer: Phaser.GameObjects.Container;
     private dialogBg: Phaser.GameObjects.Rectangle;
     private dialogText: Phaser.GameObjects.Text;
+    private escHint: Phaser.GameObjects.Text;
 
     public isPromptVisible: boolean = false;
     private isDialogVisible: boolean = false;
@@ -73,8 +74,14 @@ export class InteractionComponent {
             fontSize: '32px',
             color: '#ffffff',
             wordWrap: { width: 1000 }
-        }).setOrigin(0, 0.5);
-        this.dialogContainer.add([this.dialogBg, this.dialogText]);
+        }).setOrigin(0, 0);
+
+        this.escHint = uiScene.add.text(-560, 40, 'ESC para fechar', {
+            fontSize: '22px',
+            color: '#ff4d4d'
+        }).setOrigin(0, 1);
+
+        this.dialogContainer.add([this.dialogBg, this.dialogText, this.escHint]);
         this.dialogContainer.setVisible(false);
         this.dialogContainer.setDepth(100);
 
@@ -82,7 +89,10 @@ export class InteractionComponent {
 
         // Setup Key Listener
         this.keyHandler = (event: KeyboardEvent) => {
-            if (event.key.toLowerCase() === 'e') {
+            const key = event.key.toLowerCase();
+            if (key === 'e') {
+                if ((this.playerRef as any)?.isInDialogue) return;
+
                 const now = Date.now();
                 if (now - this.lastInteractionTime < this.INTERACTION_COOLDOWN) return;
 
@@ -97,9 +107,7 @@ export class InteractionComponent {
                         if (this.onInteract) this.onInteract();
                     } else {
                         // Simple single-line dialog
-                        if (this.isDialogVisible) {
-                            this.hideDialog();
-                        } else {
+                        if (!this.isDialogVisible) {
                             this.showDialog();
                             if (this.infoKey && this.onInfoCollected) {
                                 this.onInfoCollected(this.infoKey);
@@ -107,6 +115,10 @@ export class InteractionComponent {
                             if (this.onInteract) this.onInteract();
                         }
                     }
+                }
+            } else if (key === 'escape') {
+                if (this.isDialogVisible) {
+                    this.hideDialog();
                 }
             }
         };
@@ -131,18 +143,20 @@ export class InteractionComponent {
     }
 
     private updateDialogLayout() {
-        if (!this.dialogBg || !this.dialogText) return;
+        if (!this.dialogBg || !this.dialogText || !this.escHint) return;
 
-        const padding = 60;
-        const minHeight = 100;
+        const padding = 100;
+        const minHeight = 80;
         const textHeight = this.dialogText.displayHeight;
         const newHeight = Math.max(minHeight, textHeight + padding);
 
         this.dialogBg.setSize(1200, newHeight);
-        
-        // Adjust container Y if necessary so it grows upward or stays fixed
-        // Currently it's at 1080 - 180 = 900.
-        // If it grows, we might want it to stay above the bottom area.
+
+        // Position text 25px below top
+        this.dialogText.setY(-newHeight / 2 + 25);
+
+        // Update ESC hint position to the bottom left with better margin
+        this.escHint.setY(newHeight / 2 - 15);
     }
 
     update() {

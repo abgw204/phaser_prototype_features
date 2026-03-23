@@ -17,6 +17,7 @@ export class Game extends Scene {
     vignetteEffect: any;
     colorMatrix: any;
     private currentGrayscale: number = 0.7;
+    private isInventoryOpen: boolean = false;
 
     constructor() {
         super('Game');
@@ -31,6 +32,11 @@ export class Game extends Scene {
         this.load.image('tiles', 'museum-full-level/spritesheet.png');
         this.load.image('exclamation', 'exclamation.png');
         this.load.image('star', 'star.png');
+
+        this.load.image('relic_statue', 'relics/statue_relic.png');
+        this.load.image('relic_painting', 'relics/painting_relic.png');
+        this.load.image('relic_sarcophagus', 'relics/sarcophagus_relic.png');
+        this.load.image('relic_fossil', 'relics/dino_relic.png');
     }
 
     create() {
@@ -102,7 +108,7 @@ export class Game extends Scene {
             // the dialogue doesn't trigger a jump.
             this.time.delayedCall(200, () => {
                 // Only restore control if we didn't immediately start another dialogue/quiz
-                if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible) {
+                if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isInventoryOpen) {
                     if (this.player) this.player.isInDialogue = false;
 
                     // Ensure NPCs return to their idle animation
@@ -113,6 +119,18 @@ export class Game extends Scene {
                     }
                 }
             });
+        });
+
+        this.events.on('inventory-opened', () => {
+            this.isInventoryOpen = true;
+            if (this.player) this.player.isInDialogue = true;
+        });
+
+        this.events.on('inventory-closed', () => {
+            this.isInventoryOpen = false;
+            if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible) {
+                if (this.player) this.player.isInDialogue = false;
+            }
         });
 
         this.events.on('inspect-mode-toggled', (isInspecting: boolean) => {
@@ -221,7 +239,7 @@ export class Game extends Scene {
         }*/
         };
 
-        this.rat = new Enemy(this, 1000, 310, 1);
+        this.rat = new Enemy(this, 2000, 315, 1);
         const npc1 = new Npc(this, 700, 387, npc1Config).setFlipX(true);
         const npc2 = new Npc(this, 1800, 387, npc2Config);
         this.npcs = [npc1, npc2];

@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
-import { InteractionComponent } from './interactionComponent';
-import { QuestManager, QuestStatus } from './questManager';
+import { InteractionComponent } from './InteractionComponent';
+import { QuestManager, QuestStatus } from './QuestManager';
 
 export interface NpcConfig {
     missionId: string;

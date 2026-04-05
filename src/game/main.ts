@@ -14,6 +14,8 @@ const config: Types.Core.GameConfig = {
     physics: {
         default: 'arcade',
         arcade: {
+            debug: false,
+            tileBias: 128 // Previne "tunneling" (atravessar tiles) em altas velocidades
         }
     },
     scale: {

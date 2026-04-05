@@ -1,5 +1,5 @@
 import { Scene } from 'phaser';
-import { QuestManager, QuestStatus } from '../objects/questManager';
+import { QuestManager, QuestStatus } from '../objects/QuestManager';
 
 type MissionStepDef = {
     infoKey: string;
@@ -556,6 +556,7 @@ export class UIScene extends Scene {
         this.controlsBody = this.add.text(0, 0,
             'WASD ou SETAS: andar\n' +
             'E: interagir\n' +
+            'SHIFT: modo inspecionar\n' +
             'TAB: abrir o mapa das relíquias\n' +
             'Q: ver novamente os controles', {
             fontSize: '28px',

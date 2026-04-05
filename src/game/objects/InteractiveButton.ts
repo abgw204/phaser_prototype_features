@@ -1,5 +1,5 @@
 import * as Phaser from 'phaser';
-import { InteractionComponent, InteractionOptions } from './interactionComponent';
+import { InteractionComponent, InteractionOptions } from './InteractionComponent';
 
 export class InteractiveButton extends Phaser.GameObjects.Container {
     interaction: InteractionComponent;

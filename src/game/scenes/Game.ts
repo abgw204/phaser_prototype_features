@@ -1,11 +1,12 @@
 import { Scene } from 'phaser';
-import { Player } from '../objects/player';
-import { Npc } from '../objects/npc';
-import { InteractiveButton } from '../objects/interactiveButton';
-import { QuestManager, QuestStatus } from '../objects/questManager';
-import { DialogueSystem } from '../objects/dialogueSystem';
-import { QuizUI } from '../objects/quizUI';
-import { Enemy } from '../objects/enemy';
+import { Player } from '../objects/Player';
+import { PLAYER_SPAWN } from '../objects/playerConfig';
+import { Npc } from '../objects/Npc';
+import { InteractiveButton } from '../objects/InteractiveButton';
+import { QuestManager, QuestStatus } from '../objects/QuestManager';
+import { DialogueSystem } from '../objects/DialogueSystem';
+import { QuizUI } from '../objects/QuizUI';
+import { Enemy } from '../objects/Enemy';
 
 export class Game extends Scene {
     player: Player;
@@ -16,6 +17,9 @@ export class Game extends Scene {
     quizUI: QuizUI;
     vignetteEffect: any;
     colorMatrix: any;
+    stairsLayer: Phaser.Tilemaps.TilemapLayer | null = null;
+    collisionLayer: Phaser.Tilemaps.TilemapLayer | null = null;
+    doorLayer: Phaser.Tilemaps.TilemapLayer | null = null;
     private currentGrayscale: number = 0.7;
     private isInventoryOpen: boolean = false;
     private isControlsOverlayOpen: boolean = false;
@@ -30,8 +34,8 @@ export class Game extends Scene {
         Player.preload(this);
         Npc.preload(this);
         Enemy.preload(this);
-        this.load.tilemapTiledJSON('map', 'museum-full-level/map.json');
-        this.load.image('tiles', 'museum-full-level/spritesheet.png');
+        this.load.tilemapTiledJSON('map', 'map_v0/map.json');
+        this.load.image('tiles', 'map_v0/spritesheet.png');
         this.load.image('exclamation', 'exclamation.png');
         this.load.image('star', 'star.png');
         this.load.image('inspect_example', 'inspect_example.png');
@@ -57,15 +61,18 @@ export class Game extends Scene {
         });
 
         const tileset = map.addTilesetImage('spritefusion', 'tiles');
-        let collisionLayer: Phaser.Tilemaps.TilemapLayer | null = null;
 
         if (tileset) {
             const bgLayer = map.createLayer('Background', tileset, 0, 0);
-            bgLayer?.setScale(10);
+            bgLayer?.setScale(7);
 
-            collisionLayer = map.createLayer('Collision', tileset, 0, 0);
-            collisionLayer?.setScale(10);
-            collisionLayer?.setCollisionByExclusion([-1]);
+            this.collisionLayer = map.createLayer('Collision', tileset, 0, 0);
+            this.doorLayer = map.createLayer('Doors', tileset, 0, 0);
+            this.stairsLayer = map.createLayer('Stairs', tileset, 0, 0);
+            this.collisionLayer?.setScale(7);
+            this.doorLayer?.setScale(7);
+            this.stairsLayer?.setScale(7);
+            this.collisionLayer?.setCollisionByExclusion([-1]);
         }
 
         // Initialize Systems
@@ -104,7 +111,7 @@ export class Game extends Scene {
         this.scene.bringToTop('UIScene');
 
         this.createEntities();
-        this.setupCollisions(collisionLayer);
+        this.setupCollisions(this.collisionLayer);
         this.setupCameras();
 
         if (this.isControlsOverlayOpen && this.player) {
@@ -277,19 +284,14 @@ export class Game extends Scene {
                     'Sua jornada é nobre, Curador. Leve essa luz para os próximos salões.'
                 ]
             }
-            /*if (this.body) {
-            // Offset visual sprite 25 pixels down relative to the collision body
-            // scale is 6.0, so 25 pixels in world = 25 / 6 = 4.166 in unscaled offset
-            // Default offset after setSize(13, 13) on 16x16 sprite is 1.5.
-            (this.body as Phaser.Physics.Arcade.Body).setOffset(1.5, 1.5 - (-10 / 6.0));
-        }*/
         };
 
         this.rat = new Enemy(this, 2000, 315, 1);
         const npc1 = new Npc(this, 700, 387, npc1Config).setFlipX(true);
-        const npc2 = new Npc(this, 1800, 387, npc2Config);
+        const npc2 = new Npc(this, 2000, 387, npc2Config);
         this.npcs = [npc1, npc2];
-        this.player = new Player(this, 1000, 360, 'player_idle');
+        this.player = new Player(this, PLAYER_SPAWN.X, PLAYER_SPAWN.Y, PLAYER_SPAWN.TEXTURE);
+        this.player.stairsLayer = this.stairsLayer;
 
         for (const npc of this.npcs) {
             npc.setPlayerTracking(this.player);

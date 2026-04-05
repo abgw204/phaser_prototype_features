@@ -362,7 +362,7 @@ export class Game extends Scene {
         const maxStars = 2; // Can be cleanly changed to 3 later
         const endPhase_btn = new InteractiveButton(this, 1460, 395, {
             interactionDistance: 130,
-            gapY: -60, // Posiciona o prompt 'E' acima do texto (floatText = -60)
+            gapY: -60, // Positions the 'E' prompt above the text (floatText = -60)
             gapX: 15,
             dialogueLines: [], // Empty array natively triggers `onInteract` directly, without the default `showDialog()`
             enableHint: false,

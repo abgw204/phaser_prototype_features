@@ -157,13 +157,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         if (this.stairsLayer && this.body) {
             const body = this.body as Phaser.Physics.Arcade.Body;
 
-            // Verificamos o tile na posição central do corpo do jogador
+            // Check the tile at the center position of the player's body
             const tile = this.stairsLayer.getTileAtWorldXY(body.center.x, body.center.y, true);
 
             const upDown = this.keys.up.isDown || this.keys.w.isDown;
             const downDown = this.keys.down.isDown || this.keys.s.isDown;
 
-            // Se o tile não for nulo e não for vazio (index !== -1)
+            // If the tile is not null and not empty (index !== -1)
             if (tile && tile.index !== -1) {
                 body.setAllowGravity(false);
                 if (upDown) {
@@ -174,7 +174,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
                     body.setVelocityY(0);
                 }
             } else {
-                // Fora da escada
+                // Outside the ladder
                 body.setAllowGravity(true);
             }
         }

@@ -167,7 +167,7 @@ export class UIScene extends Scene {
         gameScene.events.on('interaction-prompt-shown', this.onInteractionPromptShownHandler);
         gameScene.events.on('interaction-prompt-hidden', this.onInteractionPromptHiddenHandler);
         
-        // Ativa o guia de controles no início da cena
+        // Activate controls guide at the start of the scene
         this.showControlsOverlay();
 
         this.events.once('shutdown', () => {

@@ -1,8 +1,8 @@
 // ============================================================
 //  PLAYER CONFIG
-//  Arquivo de configuração central do Player.
-//  Todas as macros/constantes usadas para instanciar e
-//  controlar o objeto Player devem ser definidas aqui.
+//  Central Player configuration file.
+//  All macros/constants used to instantiate and
+//  control the Player object must be defined here.
 // ============================================================
 
 // ------------------------------------------------------------
@@ -34,12 +34,12 @@ export const PLAYER_ASSETS = {
 } as const;
 
 // ------------------------------------------------------------
-// SPAWN / POSIÇÃO INICIAL
+// SPAWN / INITIAL POSITION
 // ------------------------------------------------------------
 export const PLAYER_SPAWN = {
     X: 300,
     Y: 3500,
-    TEXTURE: PLAYER_ASSETS.WALK_SPRITESHEET.key,   // textura usada no constructor
+    TEXTURE: PLAYER_ASSETS.WALK_SPRITESHEET.key,   // texture used in the constructor
 } as const;
 
 // ------------------------------------------------------------
@@ -51,18 +51,18 @@ export const PLAYER_STATS = {
 } as const;
 
 // ------------------------------------------------------------
-// FÍSICA
+// PHYSICS
 // ------------------------------------------------------------
 export const PLAYER_PHYSICS = {
     SCALE: 6.0,
 
-    /** Tamanho do hitbox (setSize) */
+    /** Hitbox size (setSize) */
     HITBOX: {
         WIDTH: 15,
         HEIGHT: 20,
     },
 
-    /** Offset do hitbox (setOffset) */
+    /** Hitbox offset (setOffset) */
     HITBOX_OFFSET: {
         X: 8,
         Y: 11,
@@ -83,41 +83,41 @@ export const PLAYER_PHYSICS = {
 } as const;
 
 // ------------------------------------------------------------
-// MOVIMENTO
+// MOVEMENT
 // ------------------------------------------------------------
 export const PLAYER_MOVEMENT = {
-    /** Aceleração horizontal normal */
+    /** Normal horizontal acceleration */
     WALK_ACCELERATION: 90,
 
-    /** Aceleração horizontal no modo inspeção */
+    /** Horizontal acceleration in inspect mode */
     INSPECT_ACCELERATION: 25,
 
-    /** Velocidade vertical do pulo */
+    /** Vertical jump velocity */
     JUMP_VELOCITY_Y: -1200,
 
-    /** Velocidade vertical ao subir/descer escadas */
+    /** Vertical speed when climbing ladders */
     CLIMB_SPEED_Y: 600,
 } as const;
 
 // ------------------------------------------------------------
-// DANO / KNOCKBACK
+// DAMAGE / KNOCKBACK
 // ------------------------------------------------------------
 export const PLAYER_DAMAGE = {
-    /** Duração do hit-stun em ms */
+    /** Hit-stun duration in ms */
     HIT_STUN_DURATION_MS: 400,
 
-    /** Velocidade vertical do knockback */
+    /** Vertical knockback velocity */
     KNOCKBACK_VELOCITY_Y: -1700,
 
-    /** Multiplicador do knockback horizontal (× dirX) */
+    /** Horizontal knockback multiplier (× dirX) */
     KNOCKBACK_VELOCITY_X: 1500,
 
-    /** Cor do flash ao tomar dano (vermelho) */
+    /** Flash color on taking damage (red) */
     HIT_TINT: 0xff0000,
 } as const;
 
 // ------------------------------------------------------------
-// ANIMAÇÕES
+// ANIMATIONS
 // ------------------------------------------------------------
 export const PLAYER_ANIMS = {
     IDLE: {
@@ -148,8 +148,8 @@ export const PLAYER_ANIMS = {
         frameRate: 14,
         repeat: 0,
     },
-    /** Animação inicial ao criar o player */
-    INITIAL_ANIM: 'inspect',
+    /** Initial animation on player creation */
+    INITIAL_ANIM: 'idle',
 } as const;
 
 // ------------------------------------------------------------
@@ -170,7 +170,7 @@ export const PLAYER_KEYS = {
 } as const;
 
 // ------------------------------------------------------------
-// EVENTOS (scene.events.emit / on)
+// EVENTS (scene.events.emit / on)
 // ------------------------------------------------------------
 export const PLAYER_EVENTS = {
     INSPECT_MODE_TOGGLED: 'inspect-mode-toggled',

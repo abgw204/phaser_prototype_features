@@ -19,6 +19,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             frameWidth: PLAYER_ASSETS.INSPECT_SPRITESHEET.frameWidth,
             frameHeight: PLAYER_ASSETS.INSPECT_SPRITESHEET.frameHeight
         });
+        scene.load.spritesheet(PLAYER_ASSETS.JUMP_SPRITESHEET.key, PLAYER_ASSETS.JUMP_SPRITESHEET.path, {
+            frameWidth: PLAYER_ASSETS.JUMP_SPRITESHEET.frameWidth,
+            frameHeight: PLAYER_ASSETS.JUMP_SPRITESHEET.frameHeight
+        });
+        scene.load.spritesheet(PLAYER_ASSETS.CLIMB_SPRITESHEET.key, PLAYER_ASSETS.CLIMB_SPRITESHEET.path, {
+            frameWidth: PLAYER_ASSETS.CLIMB_SPRITESHEET.frameWidth,
+            frameHeight: PLAYER_ASSETS.CLIMB_SPRITESHEET.frameHeight
+        });
+        scene.load.spritesheet(PLAYER_ASSETS.CLIMB_DOWN_SPRITESHEET.key, PLAYER_ASSETS.CLIMB_DOWN_SPRITESHEET.path, {
+            frameWidth: PLAYER_ASSETS.CLIMB_DOWN_SPRITESHEET.frameWidth,
+            frameHeight: PLAYER_ASSETS.CLIMB_DOWN_SPRITESHEET.frameHeight
+        });
         scene.load.audio(PLAYER_ASSETS.SOUNDS.MAGNIFYING_UP.key, PLAYER_ASSETS.SOUNDS.MAGNIFYING_UP.path);
         scene.load.audio(PLAYER_ASSETS.SOUNDS.MAGNIFYING_DOWN.key, PLAYER_ASSETS.SOUNDS.MAGNIFYING_DOWN.path);
     }
@@ -48,6 +60,24 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             frames: scene.anims.generateFrameNumbers(PLAYER_ANIMS.STOP_INSPECT.spritesheet, { frames: [...PLAYER_ANIMS.STOP_INSPECT.frames] }),
             frameRate: PLAYER_ANIMS.STOP_INSPECT.frameRate,
             repeat: PLAYER_ANIMS.STOP_INSPECT.repeat
+        });
+        scene.anims.create({
+            key: PLAYER_ANIMS.JUMP.key,
+            frames: scene.anims.generateFrameNumbers(PLAYER_ANIMS.JUMP.spritesheet, { frames: [...PLAYER_ANIMS.JUMP.frames] }),
+            frameRate: PLAYER_ANIMS.JUMP.frameRate,
+            repeat: PLAYER_ANIMS.JUMP.repeat
+        });
+        scene.anims.create({
+            key: PLAYER_ANIMS.CLIMB.key,
+            frames: scene.anims.generateFrameNumbers(PLAYER_ANIMS.CLIMB.spritesheet, { frames: [...PLAYER_ANIMS.CLIMB.frames] }),
+            frameRate: PLAYER_ANIMS.CLIMB.frameRate,
+            repeat: PLAYER_ANIMS.CLIMB.repeat
+        });
+        scene.anims.create({
+            key: PLAYER_ANIMS.CLIMB_DOWN.key,
+            frames: scene.anims.generateFrameNumbers(PLAYER_ANIMS.CLIMB_DOWN.spritesheet, { frames: [...PLAYER_ANIMS.CLIMB_DOWN.frames] }),
+            frameRate: PLAYER_ANIMS.CLIMB_DOWN.frameRate,
+            repeat: PLAYER_ANIMS.CLIMB_DOWN.repeat
         });
     }
 
@@ -87,16 +117,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         this.play(PLAYER_ANIMS.INITIAL_ANIM);
     }
 
-    // Player damage? maybe
+    // Player damage
     takeDamage(dirX: number) {
         if (this.isDead || this.isHit) return;
 
-        // Take damage logic
         this.isHit = true;
         this.setVelocityY(PLAYER_DAMAGE.KNOCKBACK_VELOCITY_Y);
         this.setVelocityX(dirX * PLAYER_DAMAGE.KNOCKBACK_VELOCITY_X);
 
-        // Flash red
         this.setTint(PLAYER_DAMAGE.HIT_TINT);
 
         this.scene.time.delayedCall(PLAYER_DAMAGE.HIT_STUN_DURATION_MS, () => {
@@ -110,7 +138,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         if (this.isDead || this.isInDialogue) return;
 
         if (this.isHit) {
-            // Cannot control while in hit stun
             return;
         }
 
@@ -118,64 +145,86 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
             this.isInspecting = !this.isInspecting;
             this.scene.events.emit(PLAYER_EVENTS.INSPECT_MODE_TOGGLED, this.isInspecting);
             if (this.isInspecting) {
-                this.anims.play(PLAYER_ANIMS.INSPECT.key, true);
+                //this.anims.play(PLAYER_ANIMS.INSPECT.key, true);
                 this.scene.sound.play(PLAYER_ASSETS.SOUNDS.MAGNIFYING_UP.key);
             } else {
-                this.anims.play(PLAYER_ANIMS.STOP_INSPECT.key, true);
+                //this.anims.play(PLAYER_ANIMS.STOP_INSPECT.key, true);
                 this.scene.sound.play(PLAYER_ASSETS.SOUNDS.MAGNIFYING_DOWN.key);
             }
         }
 
+        const body = this.body as Phaser.Physics.Arcade.Body;
         const isStopInspectPlaying = this.anims.currentAnim?.key === PLAYER_ANIMS.STOP_INSPECT.key && this.anims.isPlaying;
+        const isJumpPlaying = this.anims.currentAnim?.key === PLAYER_ANIMS.JUMP.key && this.anims.isPlaying;
 
+        // 1. STAIRS/CLIMBING LOGIC
+        let isOnStairs = false;
+        if (this.stairsLayer && body) {
+            const tile = this.stairsLayer.getTileAtWorldXY(body.center.x, body.center.y, true);
+            isOnStairs = tile && tile.index !== -1;
+        }
+
+        const upDown = this.keys.up.isDown || this.keys.w.isDown;
+        const downDown = this.keys.down.isDown || this.keys.s.isDown;
+        const isClimbing = isOnStairs && (upDown || downDown);
+
+        if (isOnStairs) {
+            body.setAllowGravity(false);
+            if (upDown) {
+                body.setVelocityY(-PLAYER_MOVEMENT.CLIMB_SPEED_Y);
+            } else if (downDown) {
+                body.setVelocityY(PLAYER_MOVEMENT.CLIMB_SPEED_Y);
+            } else {
+                body.setVelocityY(0);
+            }
+        } else {
+            body.setAllowGravity(true);
+        }
+
+        // 2. INPUT & HORIZONTAL MOVEMENT
         const leftDown = this.keys.left.isDown || this.keys.a.isDown;
         const rightDown = this.keys.right.isDown || this.keys.d.isDown;
         const jumpDown = this.keys.space.isDown || this.keys.up.isDown || this.keys.w.isDown;
 
         if (leftDown && this.body) {
-            if (!this.isInspecting && !isStopInspectPlaying) {
+            if (!this.isInspecting && !isStopInspectPlaying && !isJumpPlaying && !isOnStairs) {
                 this.anims.play(PLAYER_ANIMS.WALK.key, true);
             }
             this.body.velocity.x -= this.isInspecting ? PLAYER_MOVEMENT.INSPECT_ACCELERATION : PLAYER_MOVEMENT.WALK_ACCELERATION;
             this.setFlipX(true);
         }
         else if (rightDown && this.body) {
-            if (!this.isInspecting && !isStopInspectPlaying) {
+            if (!this.isInspecting && !isStopInspectPlaying && !isJumpPlaying && !isOnStairs) {
                 this.anims.play(PLAYER_ANIMS.WALK.key, true);
             }
             this.body.velocity.x += this.isInspecting ? PLAYER_MOVEMENT.INSPECT_ACCELERATION : PLAYER_MOVEMENT.WALK_ACCELERATION;
             this.setFlipX(false);
         }
-        else if (!this.isInspecting && !isStopInspectPlaying) {
+        else if (!this.isInspecting && !isStopInspectPlaying && !isJumpPlaying && !isOnStairs) {
             this.anims.play(PLAYER_ANIMS.IDLE.key, true);
         }
 
+        // 3. JUMP LOGIC
         if (this.body && jumpDown && this.body.blocked.down && !this.isInspecting && !isStopInspectPlaying) {
             this.setVelocityY(PLAYER_MOVEMENT.JUMP_VELOCITY_Y);
+            this.anims.play(PLAYER_ANIMS.JUMP.key, true);
         }
 
-        if (this.stairsLayer && this.body) {
-            const body = this.body as Phaser.Physics.Arcade.Body;
-
-            // Check the tile at the center position of the player's body
-            const tile = this.stairsLayer.getTileAtWorldXY(body.center.x, body.center.y, true);
-
-            const upDown = this.keys.up.isDown || this.keys.w.isDown;
-            const downDown = this.keys.down.isDown || this.keys.s.isDown;
-
-            // If the tile is not null and not empty (index !== -1)
-            if (tile && tile.index !== -1) {
-                body.setAllowGravity(false);
-                if (upDown) {
-                    body.setVelocityY(-PLAYER_MOVEMENT.CLIMB_SPEED_Y);
-                } else if (downDown) {
-                    body.setVelocityY(PLAYER_MOVEMENT.CLIMB_SPEED_Y);
+        // 4. CLIMBING ANIMATION (Final override if on stairs)
+        if (isOnStairs) {
+            if (isClimbing) {
+                if (downDown) {
+                    this.anims.play(PLAYER_ANIMS.CLIMB_DOWN.key, true);
                 } else {
-                    body.setVelocityY(0);
+                    this.anims.play(PLAYER_ANIMS.CLIMB.key, true);
                 }
             } else {
-                // Outside the ladder
-                body.setAllowGravity(true);
+                if (this.anims.currentAnim?.key === PLAYER_ANIMS.CLIMB.key) {
+                    this.anims.pause();
+                } else {
+                    this.anims.play(PLAYER_ANIMS.CLIMB.key);
+                    this.anims.pause();
+                }
             }
         }
     }

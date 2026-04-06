@@ -20,9 +20,9 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
     private config: NpcConfig;
 
     static preload(scene: Phaser.Scene) {
-        scene.load.spritesheet('npc_idle', 'npcIdle.png', {
-            frameWidth: 64,
-            frameHeight: 64
+        scene.load.spritesheet('npc_idle', 'npcs/04_npc_female/idle.png', {
+            frameWidth: 48,
+            frameHeight: 48
         });
         scene.load.spritesheet('npc', 'npc-giving-star.png', {
             frameWidth: 64,
@@ -33,8 +33,8 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
     static createAnims(scene: Phaser.Scene) {
         scene.anims.create({
             key: 'npc_idle_anim',
-            frames: scene.anims.generateFrameNumbers('npc_idle', { frames: [0] }),
-            frameRate: 6,
+            frames: scene.anims.generateFrameNumbers('npc_idle', { frames: [0, 1, 2, 3] }),
+            frameRate: 3,
             repeat: -1
         });
         scene.anims.create({
@@ -52,12 +52,7 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
-        this.setScale(4.0);
-
-        if (this.body) {
-            this.body.immovable = true;
-            (this.body as Phaser.Physics.Arcade.Body).setAllowGravity(true);
-        }
+        this.setScale(4.5);
 
         this.play('npc_idle_anim');
 
@@ -65,10 +60,10 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
             dialogueLines: [], // Marks this as complex dialogue
             onInteract: () => this.handleInteraction(),
             gapX: 0,
-            gapY: -50
+            gapY: -70
         });
 
-        this.exclamationIcon = scene.add.image(x, y - 100, 'exclamation').setScale(4);
+        this.exclamationIcon = scene.add.image(x, y - 120, 'exclamation').setScale(4);
 
         this.scene.events.on(Phaser.Scenes.Events.UPDATE, this.update, this);
         this.once(Phaser.GameObjects.Events.DESTROY, () => {

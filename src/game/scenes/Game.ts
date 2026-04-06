@@ -1,4 +1,5 @@
 import { Scene } from 'phaser';
+import { MapManager, MapData } from '../objects/MapManager';
 import { Player } from '../objects/Player';
 import { PLAYER_SPAWN } from '../objects/playerConfig';
 import { Npc } from '../objects/Npc';
@@ -6,6 +7,7 @@ import { InteractiveButton } from '../objects/InteractiveButton';
 import { QuestManager, QuestStatus } from '../objects/QuestManager';
 import { DialogueSystem } from '../objects/DialogueSystem';
 import { QuizUI } from '../objects/QuizUI';
+import { NPC_CONFIGS } from '../objects/npcConfig';
 import { Enemy } from '../objects/Enemy';
 
 export class Game extends Scene {
@@ -19,8 +21,6 @@ export class Game extends Scene {
     colorMatrix: any;
     stairsLayer: Phaser.Tilemaps.TilemapLayer | null = null;
     collisionLayer: Phaser.Tilemaps.TilemapLayer | null = null;
-    doorLayer: Phaser.Tilemaps.TilemapLayer | null = null;
-    foregroundLayer: Phaser.Tilemaps.TilemapLayer | null = null;
     private currentGrayscale: number = 0.0;
     private isInventoryOpen: boolean = false;
     private isControlsOverlayOpen: boolean = false;
@@ -61,21 +61,14 @@ export class Game extends Scene {
             tileHeight: 16
         });
 
+        let mapData: MapData | null = null;
         const tileset = map.addTilesetImage('dungeon', 'tiles');
 
         if (tileset) {
-            const bgLayer = map.createLayer('Background', tileset, 0, 0);
-            bgLayer?.setScale(6);
-
-            this.collisionLayer = map.createLayer('Collision', tileset, 0, 0);
-            this.doorLayer = map.createLayer('Doors', tileset, 0, 0);
-            this.stairsLayer = map.createLayer('Stairs', tileset, 0, 0);
-            this.foregroundLayer = map.createLayer('Foreground', tileset, 0, 0);
-            this.collisionLayer?.setScale(6);
-            this.doorLayer?.setScale(6);
-            this.stairsLayer?.setScale(6);
-            this.foregroundLayer?.setScale(6);
-            this.collisionLayer?.setCollisionByExclusion([-1]);
+            mapData = MapManager.setupMap(this, map, tileset, 6);
+            
+            this.collisionLayer = mapData.tileLayers['Collision'] || null;
+            this.stairsLayer = mapData.tileLayers['Stairs'] || null;
         }
 
         // Initialize Systems
@@ -113,7 +106,9 @@ export class Game extends Scene {
         });
         this.scene.bringToTop('UIScene');
 
-        this.createEntities();
+        if (mapData) {
+            this.createEntities(mapData);
+        }
         this.setupCollisions(this.collisionLayer);
         this.setupCameras();
 
@@ -234,66 +229,47 @@ export class Game extends Scene {
         }
     }
 
-    private createEntities() {
+    private createEntities(mapData: MapData) {
+        this.npcs = [];
 
-        const npc1Config = {
-            missionId: 'obras_famosas',
-            dialogues: {
-                intro: [
-                    'Curador Viajante... Finalmente você chegou. Meus olhos já mal conseguem distinguir a luz.',
-                    'O Grande Esquecimento roubou os tons, as pinceladas... roubou a alma deste salão.',
-                    'Mas o seu mapa ainda brilha. Há esperança.',
-                    'Preciso que você encontre a Pintura Famosa e a nossa Estátua mais antiga. Leia seus fragmentos de história.',
-                    'Se você conseguir se lembrar dos detalhes delas, poderemos trazer as cores de volta a esta ala.',
-                    'Vá, antes que a tela fique em branco para sempre.'
-                ],
-                collecting: [
-                    'O cinza ainda domina este salão, Curador.',
-                    'Encontre a Estátua e a Pintura Famosa. Observe os anos, os criadores... Cada detalhe é uma faísca de cor.'
-                ],
-                ready: [
-                    'Sinto uma vibração no ar... Você tocou as obras antigas, não tocou?',
-                    'As memórias estão frescas em sua mente.',
-                    'Chegou a hora. Mostre-me o que aprendeu. Se suas memórias forem precisas, quebraremos o Esquecimento!',
-                    'Vamos invocar as cores?'
-                ],
-                completed: [
-                    'Olhe! O azul, o amarelo... As cores estão voltando! A memória de Vincent vive novamente!',
-                    'Obrigado, Curador Viajante. Esta ala do museu nunca mais será esquecida.'
-                ]
-            }
-        };
-        const npc2Config = {
-            missionId: 'reliquias_antigas',
-            dialogues: {
-                intro: [
-                    'Passos? Há tanto tempo não ouço passos neste corredor de poeira e sombras.',
-                    'Sou o Guardião das Eras. As fundações do mundo estão se desfazendo com o Esquecimento.',
-                    'Se perdermos nosso passado mais profundo, não teremos chão para o futuro.',
-                    'Busque as relíquias primordiais nas sombras: o Sarcófago dos reis antigos e o Fóssil cravado na pedra.',
-                    'Traga-me o conhecimento deles, Curador.'
-                ],
-                collecting: [
-                    'As areias do tempo estão escorrendo, e a névoa do Esquecimento continua espessa.',
-                    'Você ainda não desvendou os segredos do Sarcófago e do Fóssil. Continue buscando.'
-                ],
-                ready: [
-                    'A poeira ao seu redor parece brilhar... Você encontrou as fundações do passado!',
-                    'Agora, devemos ancorar essa realidade. Prove que você detém a verdadeira memória das relíquias.',
-                    'Prepare-se, Curador. O tempo nos julgará agora.'
-                ],
-                completed: [
-                    'As linhas do tempo estão restauradas! O passado profundo respira mais uma vez.',
-                    'Sua jornada é nobre, Curador. Leve essa luz para os próximos salões.'
-                ]
-            }
-        };
+        // 1. Dynamic NPC loading from Object Layers
+        Object.values(mapData.objectLayers).forEach(layer => {
+            layer.objects.forEach((obj: any) => {
+                const objectType = obj.type || obj.class;
 
+                if (objectType === 'Npc') {
+                    const missionId = obj.properties?.find((p: any) => p.name === 'missionId')?.value;
+                    const flipX = obj.properties?.find((p: any) => p.name === 'flipX')?.value || false;
+
+                    const config = NPC_CONFIGS[missionId];
+                    if (config) {
+                        const npc = new Npc(this, obj.x * 6, obj.y * 6, config);
+                        npc.setFlipX(flipX);
+                        this.npcs.push(npc);
+                    } else {
+                        console.warn(`[Game] NPC at (${obj.x}, ${obj.y}) has invalid missionId: ${missionId}`);
+                    }
+                }
+            });
+        });
+
+        // 2. Static placements
         this.rat = new Enemy(this, 2000, 315, 1);
-        const npc1 = new Npc(this, 700, 387, npc1Config).setFlipX(true);
-        const npc2 = new Npc(this, 2000, 387, npc2Config);
-        this.npcs = [npc1, npc2];
-        this.player = new Player(this, PLAYER_SPAWN.X, PLAYER_SPAWN.Y, PLAYER_SPAWN.TEXTURE);
+        
+        // 3. Player Spawn
+        let spawnX = PLAYER_SPAWN.X;
+        let spawnY = PLAYER_SPAWN.Y;
+
+        const spawnLayer = mapData.objectLayers['PlayerSpawn'];
+        if (spawnLayer && spawnLayer.objects) {
+            const spawnPoint = spawnLayer.objects.find((obj: any) => obj.name === 'SpawnPoint');
+            if (spawnPoint) {
+                spawnX = (spawnPoint.x || 0) * 6;
+                spawnY = (spawnPoint.y || 0) * 6;
+            }
+        }
+
+        this.player = new Player(this, spawnX, spawnY, PLAYER_SPAWN.TEXTURE);
         this.player.stairsLayer = this.stairsLayer;
 
         for (const npc of this.npcs) {
@@ -301,6 +277,7 @@ export class Game extends Scene {
             npc.setQuestManager(this.questManager);
         }
 
+        // 4. Interactive Items
         const statue_btn = new InteractiveButton(this, 212, 220, {
             interactionDistance: 210,
             dialogText: 'Uma estátua gélida e cinzenta. A placa gasta pelo tempo diz: "Esculpida no ano de 1832,  representando a rigidez da alma humana".',
@@ -362,12 +339,12 @@ export class Game extends Scene {
         });
 
         // Phase Complete Button
-        const maxStars = 2; // Can be cleanly changed to 3 later
+        const maxStars = 2;
         const endPhase_btn = new InteractiveButton(this, 1460, 395, {
             interactionDistance: 130,
-            gapY: -60, // Positions the 'E' prompt above the text (floatText = -60)
+            gapY: -60,
             gapX: 15,
-            dialogueLines: [], // Empty array natively triggers `onInteract` directly, without the default `showDialog()`
+            dialogueLines: [],
             enableHint: false,
             hintDelayMs: 15000,
             hintOffsetX: 0,
@@ -378,8 +355,8 @@ export class Game extends Scene {
                 uiScene.showPhaseCompleteUI(collected, maxStars);
             }
         });
-        let isEndPhaseActive = false;
 
+        let isEndPhaseActive = false;
         const endPhase_container = this.add.container(0, -60);
         const floatStar = this.add.image(-10, 0, 'star').setScale(2.5);
         const endPhase_floatText = this.add.text(6, 0, `0/${maxStars}`, {
@@ -397,7 +374,6 @@ export class Game extends Scene {
             const collected = this.questManager.getTotalCompletedMissions();
             endPhase_floatText.setText(`${collected}/${maxStars}`);
 
-            // Only show the prompt and enable interaction when all required stars are collected
             if (collected >= maxStars && !isEndPhaseActive) {
                 isEndPhaseActive = true;
                 endPhase_btn.setPlayerTracking(this.player);
@@ -440,8 +416,7 @@ export class Game extends Scene {
                         'Você precisará delas ao longo da sua jornada!',
                         'Esse é um grande passo para restaurar a luz do mundo!'
                     ];
-                    // Find the NPC to play animation
-                    const npc = this.npcs.find(n => n['config'] && n['config'].missionId === missionId);
+                    const npc = this.npcs.find(n => (n as any).config && (n as any).config.missionId === missionId);
                     if (npc) npc.play('npc_anim');
 
                     this.questManager.setPendingResult(missionId, lines);
@@ -483,7 +458,7 @@ export class Game extends Scene {
                         'Pegue essa estrela dourada, ela trará luz ao seu caminho.',
                         'Você precisará delas para avançar em sua jornada!'
                     ];
-                    const npc = this.npcs.find(n => n['config'] && n['config'].missionId === missionId);
+                    const npc = this.npcs.find(n => (n as any).config && (n as any).config.missionId === missionId);
                     if (npc) npc.play('npc_anim');
 
                     this.questManager.setPendingResult(missionId, lines);
@@ -518,7 +493,6 @@ export class Game extends Scene {
     private setupCameras() {
         this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
         if (this.cameras.main.postFX) {
-            //this.vignetteEffect = this.cameras.main.postFX.addVignette(0.5, 0.5, 0.9, 0.6);
             this.colorMatrix = this.cameras.main.postFX.addColorMatrix();
             this.colorMatrix.grayscale(this.currentGrayscale);
         }

@@ -11,15 +11,33 @@
 export const PLAYER_ASSETS = {
     WALK_SPRITESHEET: {
         key: 'player_walk',
-        path: 'player-walk.png',
-        frameWidth: 32,
-        frameHeight: 32,
+        path: 'player/animations/walking.png',
+        frameWidth: 48,
+        frameHeight: 48,
     },
     INSPECT_SPRITESHEET: {
         key: 'player_inspect',
         path: 'player-inspect.png',
         frameWidth: 32,
         frameHeight: 32,
+    },
+    JUMP_SPRITESHEET: {
+        key: 'player_jump',
+        path: 'player/animations/jump.png',
+        frameWidth: 48,
+        frameHeight: 48,
+    },
+    CLIMB_SPRITESHEET: {
+        key: 'player_climb',
+        path: 'player/animations/climbing_up.png',
+        frameWidth: 48,
+        frameHeight: 48,
+    },
+    CLIMB_DOWN_SPRITESHEET: {
+        key: 'player_climb_down',
+        path: 'player/animations/climbing_up.png',
+        frameWidth: 48,
+        frameHeight: 48,
     },
     SOUNDS: {
         MAGNIFYING_UP: {
@@ -54,18 +72,18 @@ export const PLAYER_STATS = {
 // PHYSICS
 // ------------------------------------------------------------
 export const PLAYER_PHYSICS = {
-    SCALE: 6.0,
+    SCALE: 4.5,
 
     /** Hitbox size (setSize) */
     HITBOX: {
         WIDTH: 12,
-        HEIGHT: 20,
+        HEIGHT: 38,
     },
 
     /** Hitbox offset (setOffset) */
     HITBOX_OFFSET: {
-        X: 10,
-        Y: 12,
+        X: 18,
+        Y: 5,
     },
 
     DAMPING: true,
@@ -130,8 +148,8 @@ export const PLAYER_ANIMS = {
     WALK: {
         key: 'walk',
         spritesheet: PLAYER_ASSETS.WALK_SPRITESHEET.key,
-        frames: [1, 2, 3, 4, 5, 6, 7, 0],
-        frameRate: 10,
+        frames: [0, 1, 2, 3, 4, 5, 6, 7],
+        frameRate: 15,
         repeat: -1,
     },
     INSPECT: {
@@ -148,6 +166,29 @@ export const PLAYER_ANIMS = {
         frameRate: 14,
         repeat: 0,
     },
+    JUMP: {
+        key: 'jump',
+        spritesheet: PLAYER_ASSETS.JUMP_SPRITESHEET.key,
+        frames: [1, 2, 3, 4, 5, 6, 7, 8],
+        frameRate: 17,
+        repeat: 0,
+    },
+
+    CLIMB: {
+        key: 'climb',
+        spritesheet: 'player_climb',
+        frames: [0, 1, 2, 3, 4],
+        frameRate: 5,
+        repeat: -1,
+    },
+    CLIMB_DOWN: {
+        key: 'climb_down',
+        spritesheet: 'player_climb',
+        frames: [4, 3, 2, 1, 0],
+        frameRate: 5,
+        repeat: -1,
+    },
+
     /** Initial animation on player creation */
     INITIAL_ANIM: 'idle',
 } as const;

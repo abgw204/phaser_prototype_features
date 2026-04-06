@@ -20,7 +20,8 @@ export class Game extends Scene {
     stairsLayer: Phaser.Tilemaps.TilemapLayer | null = null;
     collisionLayer: Phaser.Tilemaps.TilemapLayer | null = null;
     doorLayer: Phaser.Tilemaps.TilemapLayer | null = null;
-    private currentGrayscale: number = 0.7;
+    foregroundLayer: Phaser.Tilemaps.TilemapLayer | null = null;
+    private currentGrayscale: number = 0.0;
     private isInventoryOpen: boolean = false;
     private isControlsOverlayOpen: boolean = false;
     private isInspectTutorialOpen: boolean = false;
@@ -56,22 +57,24 @@ export class Game extends Scene {
 
         const map = this.make.tilemap({
             key: 'map',
-            tileWidth: 8,
-            tileHeight: 8
+            tileWidth: 16,
+            tileHeight: 16
         });
 
-        const tileset = map.addTilesetImage('spritefusion', 'tiles');
+        const tileset = map.addTilesetImage('dungeon', 'tiles');
 
         if (tileset) {
             const bgLayer = map.createLayer('Background', tileset, 0, 0);
-            bgLayer?.setScale(7);
+            bgLayer?.setScale(6);
 
             this.collisionLayer = map.createLayer('Collision', tileset, 0, 0);
             this.doorLayer = map.createLayer('Doors', tileset, 0, 0);
             this.stairsLayer = map.createLayer('Stairs', tileset, 0, 0);
-            this.collisionLayer?.setScale(7);
-            this.doorLayer?.setScale(7);
-            this.stairsLayer?.setScale(7);
+            this.foregroundLayer = map.createLayer('Foreground', tileset, 0, 0);
+            this.collisionLayer?.setScale(6);
+            this.doorLayer?.setScale(6);
+            this.stairsLayer?.setScale(6);
+            this.foregroundLayer?.setScale(6);
             this.collisionLayer?.setCollisionByExclusion([-1]);
         }
 
@@ -515,9 +518,9 @@ export class Game extends Scene {
     private setupCameras() {
         this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
         if (this.cameras.main.postFX) {
-            this.vignetteEffect = this.cameras.main.postFX.addVignette(0.5, 0.5, 0.9, 0.6);
+            //this.vignetteEffect = this.cameras.main.postFX.addVignette(0.5, 0.5, 0.9, 0.6);
             this.colorMatrix = this.cameras.main.postFX.addColorMatrix();
-            this.colorMatrix.grayscale(0.7);
+            this.colorMatrix.grayscale(this.currentGrayscale);
         }
     }
 
@@ -525,7 +528,7 @@ export class Game extends Scene {
         if (!this.colorMatrix) return;
 
         const completed = this.questManager.getTotalCompletedMissions();
-        let targetGray = 0.7;
+        let targetGray = 0.0;
 
         if (completed === 1) targetGray = 0.3;
         else if (completed >= 2) targetGray = 0;

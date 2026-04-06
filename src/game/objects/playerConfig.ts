@@ -38,7 +38,7 @@ export const PLAYER_ASSETS = {
 // ------------------------------------------------------------
 export const PLAYER_SPAWN = {
     X: 300,
-    Y: 3500,
+    Y: 3000,
     TEXTURE: PLAYER_ASSETS.WALK_SPRITESHEET.key,   // texture used in the constructor
 } as const;
 
@@ -58,14 +58,14 @@ export const PLAYER_PHYSICS = {
 
     /** Hitbox size (setSize) */
     HITBOX: {
-        WIDTH: 15,
+        WIDTH: 12,
         HEIGHT: 20,
     },
 
     /** Hitbox offset (setOffset) */
     HITBOX_OFFSET: {
-        X: 8,
-        Y: 11,
+        X: 10,
+        Y: 12,
     },
 
     DAMPING: true,

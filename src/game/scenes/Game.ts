@@ -1,32 +1,36 @@
 import { Scene } from 'phaser';
 import { MapManager, MapData } from '../objects/MapManager';
 import { Player } from '../objects/Player';
-import { PLAYER_SPAWN } from '../objects/playerConfig';
+import { PLAYER_SPAWN } from '../objects/PlayerConfig';
 import { Npc } from '../objects/Npc';
 import { InteractiveButton } from '../objects/InteractiveButton';
 import { QuestManager, QuestStatus } from '../objects/QuestManager';
-import { DialogueSystem } from '../objects/DialogueSystem';
-import { QuizUI } from '../objects/QuizUI';
 import { Enemy } from '../objects/Enemy';
+import { GameEvents } from '../constants/GameEvents';
+import { EffectsManager } from '../objects/EffectsManager';
+import { SceneNames } from '../constants/SceneNames';
+import { LayoutConfig } from '../constants/LayoutConfig';
+import { UIScene } from './UIScene';
+import { INpcEntity } from '../types/EntityTypes';
+import { LevelQuizData } from '../data/LevelQuizData';
+import { NPC_ANIMS } from '../objects/NpcConfig';
+import { MissionRequirements, MissionRegistry } from '../data/MissionRegistry';
 
 export class Game extends Scene {
     player: Player;
     rat: Enemy;
     npcs: Npc[] = [];
     questManager: QuestManager;
-    dialogueSystem: DialogueSystem;
-    quizUI: QuizUI;
-    vignetteEffect: any;
-    colorMatrix: any;
     stairsLayer: Phaser.Tilemaps.TilemapLayer | null = null;
     collisionLayer: Phaser.Tilemaps.TilemapLayer | null = null;
-    private currentGrayscale: number = 0.0;
+    private effects!: EffectsManager;
+    private currentGrayscale: number = 0.82;
     private isInventoryOpen: boolean = false;
     private isControlsOverlayOpen: boolean = false;
     private isInspectTutorialOpen: boolean = false;
 
     constructor() {
-        super('Game');
+        super(SceneNames.GAME);
     }
 
     preload() {
@@ -52,6 +56,7 @@ export class Game extends Scene {
     }
 
     create() {
+        this.effects = new EffectsManager(this);
         this.createAnimations();
 
         const map = this.make.tilemap({
@@ -71,39 +76,17 @@ export class Game extends Scene {
         }
 
         // Initialize Systems
-        this.dialogueSystem = new DialogueSystem(this);
-        this.quizUI = new QuizUI(this);
-        this.questManager = new QuestManager([
-            { id: 'obras_famosas', requiredInfos: ['statue_info', 'painting_info'] },
-            { id: 'reliquias_antigas', requiredInfos: ['sarcophagus_info', 'fossil_info'] }
-        ]);
+        this.questManager = new QuestManager(MissionRequirements);
 
         this.setupEvents();
 
-        this.scene.launch('UIScene', {
+        this.scene.launch(SceneNames.UI, {
             phaseTitle: 'Museu antigo',
-            missionsTotal: 2,
+            missionsTotal: Object.keys(MissionRegistry).length,
             questManager: this.questManager,
-            missionDefs: {
-                obras_famosas: {
-                    id: 'obras_famosas',
-                    title: 'Obras famosas',
-                    steps: [
-                        { infoKey: 'statue_info', text: 'Verifique a estátua do herói' },
-                        { infoKey: 'painting_info', text: 'Verifique a pintura famosa' }
-                    ]
-                },
-                reliquias_antigas: {
-                    id: 'reliquias_antigas',
-                    title: 'Relíquias antigas',
-                    steps: [
-                        { infoKey: 'sarcophagus_info', text: 'Verifique o sarcófago' },
-                        { infoKey: 'fossil_info', text: 'Verifique o fóssil' }
-                    ]
-                }
-            }
+            missionDefs: MissionRegistry
         });
-        this.scene.bringToTop('UIScene');
+        this.scene.bringToTop(SceneNames.UI);
 
         if (mapData) {
             this.createEntities(mapData);
@@ -117,98 +100,59 @@ export class Game extends Scene {
     }
 
     private setupEvents() {
-        this.events.on('dialogue-started', () => {
+        this.events.on(GameEvents.DIALOGUE_STARTED, () => {
             if (this.player) this.player.isInDialogue = true;
+            this.effects.setZoom(1.2, 400);
         });
-        this.events.on('dialogue-ended', () => {
-            // Delay restoring control slightly so the SPACE press that closed
-            // the dialogue doesn't trigger a jump.
-            this.time.delayedCall(200, () => {
-                // Only restore control if we didn't immediately start another dialogue/quiz
-                if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isInventoryOpen && !this.isControlsOverlayOpen && !this.isInspectTutorialOpen) {
-                    if (this.player) this.player.isInDialogue = false;
 
-                    // Ensure NPCs return to their idle animation
-                    if (this.npcs) {
-                        for (const npc of this.npcs) {
-                            npc.play('npc_idle_anim', true);
-                        }
+        this.events.on(GameEvents.DIALOGUE_ENDED, () => {
+            this.time.delayedCall(200, () => {
+                if (this.player) this.player.isInDialogue = false;
+
+                if (this.npcs) {
+                    for (const npc of this.npcs) {
+                        npc.play('npc_idle_anim', true);
                     }
                 }
             });
+
+            this.effects.setZoom(1.0, 400);
         });
 
-        this.events.on('inventory-opened', () => {
+        this.events.on(GameEvents.INVENTORY_OPENED, () => {
             this.isInventoryOpen = true;
             if (this.player) this.player.isInDialogue = true;
         });
 
-        this.events.on('inventory-closed', () => {
+        this.events.on(GameEvents.INVENTORY_CLOSED, () => {
             this.isInventoryOpen = false;
-            if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isControlsOverlayOpen && !this.isInspectTutorialOpen) {
-                if (this.player) this.player.isInDialogue = false;
-            }
+            this.checkDialogState();
         });
 
-        this.events.on('controls-overlay-opened', () => {
+        this.events.on(GameEvents.CONTROLS_OVERLAY_OPENED, () => {
             this.isControlsOverlayOpen = true;
             if (this.player) this.player.isInDialogue = true;
         });
 
-        this.events.on('controls-overlay-closed', () => {
+        this.events.on(GameEvents.CONTROLS_OVERLAY_CLOSED, () => {
             this.isControlsOverlayOpen = false;
-            if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isInventoryOpen && !this.isInspectTutorialOpen) {
-                if (this.player) this.player.isInDialogue = false;
-            }
+            this.checkDialogState();
         });
 
-        this.events.on('inspect-tutorial-opened', () => {
+        this.events.on(GameEvents.INSPECT_TUTORIAL_OPENED, () => {
             this.isInspectTutorialOpen = true;
             if (this.player) this.player.isInDialogue = true;
         });
 
-        this.events.on('inspect-tutorial-closed', () => {
+        this.events.on(GameEvents.INSPECT_TUTORIAL_CLOSED, () => {
             this.isInspectTutorialOpen = false;
-            if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isInventoryOpen && !this.isControlsOverlayOpen) {
-                if (this.player) this.player.isInDialogue = false;
-            }
+            this.checkDialogState();
         });
 
         this.events.on('inspect-mode-toggled', (isInspecting: boolean) => {
-            if (isInspecting) {
-                if (this.vignetteEffect) {
-                    this.tweens.add({
-                        targets: this.vignetteEffect,
-                        radius: 0.6,
-                        strength: 0.6, // amount/strength fallback
-                        duration: 500,
-                        ease: 'Power2'
-                    });
-                }
-                this.tweens.add({
-                    targets: this.cameras.main,
-                    zoom: 1.8,
-                    duration: 500,
-                    ease: 'Power2',
-                    overwrite: true
-                });
-            } else {
-                if (this.vignetteEffect) {
-                    this.tweens.add({
-                        targets: this.vignetteEffect,
-                        radius: 0.9,
-                        strength: 0.6, // amount/strength fallback
-                        duration: 500,
-                        ease: 'Power2'
-                    });
-                }
-                this.tweens.add({
-                    targets: this.cameras.main,
-                    zoom: 1.0,
-                    duration: 500,
-                    ease: 'Power2',
-                    overwrite: true
-                });
+            this.effects.setZoom(isInspecting ? 1.8 : 1.0, 500);
+            if (this.effects.vignetteEffect) {
+                this.effects.setVignette(this.effects.vignetteEffect, isInspecting ? 0.6 : 0.9, 500);
             }
         });
     }
@@ -267,7 +211,7 @@ export class Game extends Scene {
             hintOffsetY: 42,
             onInfoCollected: (key) => {
                 const changed = this.questManager.collectInfo(key);
-                if (changed) this.events.emit('mission-progress-changed');
+                if (changed) this.events.emit(GameEvents.MISSION_PROGRESS_CHANGED);
             }
         });
 
@@ -282,7 +226,7 @@ export class Game extends Scene {
             hintOffsetY: -140,
             onInfoCollected: (key) => {
                 const changed = this.questManager.collectInfo(key);
-                if (changed) this.events.emit('mission-progress-changed');
+                if (changed) this.events.emit(GameEvents.MISSION_PROGRESS_CHANGED);
             }
         });
 
@@ -297,7 +241,7 @@ export class Game extends Scene {
             hintOffsetY: -120,
             onInfoCollected: (key) => {
                 const changed = this.questManager.collectInfo(key);
-                if (changed) this.events.emit('mission-progress-changed');
+                if (changed) this.events.emit(GameEvents.MISSION_PROGRESS_CHANGED);
             }
         });
 
@@ -312,7 +256,7 @@ export class Game extends Scene {
             hintOffsetY: -100,
             onInfoCollected: (key) => {
                 const changed = this.questManager.collectInfo(key);
-                if (changed) this.events.emit('mission-progress-changed');
+                if (changed) this.events.emit(GameEvents.MISSION_PROGRESS_CHANGED);
             }
         });
 
@@ -329,8 +273,10 @@ export class Game extends Scene {
             hintOffsetY: -120,
             onInteract: () => {
                 const collected = this.questManager.getTotalCompletedMissions();
-                const uiScene = this.scene.get('UIScene') as any;
-                uiScene.showPhaseCompleteUI(collected, maxStars);
+                const uiScene = this.scene.get(SceneNames.UI) as UIScene;
+                if (uiScene) {
+                    uiScene.showPhaseCompleteUI(collected, maxStars);
+                }
             }
         });
 
@@ -339,16 +285,16 @@ export class Game extends Scene {
         const floatStar = this.add.image(-10, 0, 'star').setScale(2.5);
         const endPhase_floatText = this.add.text(6, 0, `0/${maxStars}`, {
             fontSize: '22px',
-            color: '#ffff8bff',
+            color: LayoutConfig.COLORS.STAR_YELLOW,
             fontStyle: 'bold',
-            stroke: '#000000',
+            stroke: LayoutConfig.COLORS.BLACK,
             strokeThickness: 4
         }).setOrigin(0, 0.5);
 
         endPhase_container.add([floatStar, endPhase_floatText]);
         endPhase_btn.add(endPhase_container);
 
-        this.events.on('mission-status-changed', () => {
+        this.events.on(GameEvents.MISSION_STATUS_CHANGED, () => {
             const collected = this.questManager.getTotalCompletedMissions();
             endPhase_floatText.setText(`${collected}/${maxStars}`);
 
@@ -365,96 +311,73 @@ export class Game extends Scene {
     }
 
     public startQuiz(missionId: string) {
-        if (missionId === 'obras_famosas') {
-            this.quizUI.startQuiz([
-                {
-                    text: 'Para ancorarmos a estátua de volta à nossa realidade, me diga: em que ano a rigidez da alma humana foi cravada na pedra?',
-                    options: ['1832', '1850', '1901'],
-                    correctIndex: 0
-                },
-                {
-                    text: 'A tela estava coberta por uma névoa escura. De quem é a assinatura que luta para não ser apagada pelo Esquecimento?',
-                    options: ['Leonardo', 'Vincent', 'Picasso'],
-                    correctIndex: 1
-                },
-                {
-                    text: 'Antes de o mundo perder a sua luz, em que ano aquele céu estrelado foi eternizado na pintura?',
-                    options: ['1789', '1889', '1920'],
-                    correctIndex: 1
-                }
-            ], (score: number) => {
-                if (score >= 3) {
-                    this.questManager.setStatus(missionId, QuestStatus.COMPLETED);
-                    this.events.emit('mission-status-changed');
+        try {
+            const questions = LevelQuizData[missionId];
+            if (!questions || questions.length === 0) {
+                console.error(`[Game] Quiz data missing or empty for missionId: ${missionId}`);
+                this.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, ['[Erro de Sistema] Não há perguntas cadastradas para esta missão.']);
+                return;
+            }
 
-                    const lines = [
+            if (!this.questManager) {
+                 throw new Error('QuestManager não inicializado');
+            }
+
+            this.events.emit(GameEvents.SHOW_QUIZ_REQUEST, questions, (score: number) => {
+                const isSuccess = score >= questions.length;
+                
+                if (isSuccess) {
+                    this.questManager.setStatus(missionId, QuestStatus.COMPLETED);
+                    this.events.emit(GameEvents.MISSION_STATUS_CHANGED);
+
+                    const lines = missionId === 'obras_famosas' ? [
                         `Incrível! Você demonstrou grande conhecimento!`,
                         'E conseguiu trazer um pouco de cor de volta para este salão!',
                         'Pegue essa estrela dourada como recompensa!',
                         'Você precisará delas ao longo da sua jornada!',
                         'Esse é um grande passo para restaurar a luz do mundo!'
-                    ];
-                    const npc = this.npcs.find(n => (n as any).config && (n as any).config.missionId === missionId);
-                    if (npc) npc.play('npc_anim');
-
-                    this.questManager.setPendingResult(missionId, lines);
-                    this.updateGrayscale();
-                    this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
-                } else {
-                    this.questManager.setStatus(missionId, QuestStatus.READY_FOR_QUIZ);
-                    this.events.emit('mission-status-changed');
-
-                    const lines = [
-                        'Hmm...',
-                        'Talvez precise observar as obras com mais atenção...',
-                        'Tente ler as informações novamente!'
-                    ];
-                    this.questManager.setPendingResult(missionId, lines);
-                    this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
-                }
-            });
-        } else if (missionId === 'reliquias_antigas') {
-            this.quizUI.startQuiz([
-                {
-                    text: 'Ao abrir o pesado túmulo antigo, qual foi a prova que você encontrou de que a humanidade sempre lutou contra o tempo e a morte?',
-                    options: ['Ouro e Tesouros', 'Uma Múmia preservada', 'Vazio'],
-                    correctIndex: 1
-                },
-                {
-                    text: 'O monarca encravado na pedra viveu eras antes do primeiro ser humano respirar. A qual período o fóssil pertence?',
-                    options: ['Cretáceo', 'Jurássico', 'Triássico'],
-                    correctIndex: 1
-                }
-            ], (score: number) => {
-                if (score >= 2) {
-                    this.questManager.setStatus(missionId, QuestStatus.COMPLETED);
-                    this.events.emit('mission-status-changed');
-
-                    const lines = [
+                    ] : [
                         'Parabéns! Agora você entende as relíquias antigas!',
                         'O salão está mais iluminado.',
                         'Pegue essa estrela dourada, ela trará luz ao seu caminho.',
                         'Você precisará delas para avançar em sua jornada!'
                     ];
-                    const npc = this.npcs.find(n => (n as any).config && (n as any).config.missionId === missionId);
-                    if (npc) npc.play('npc_anim');
+
+                    const npc = this.npcs.find(n => {
+                        const ent = n as unknown as INpcEntity;
+                        return ent.config && ent.config.missionId === missionId;
+                    });
+                    if (npc) npc.play(NPC_ANIMS.GIVING_STAR.key);
 
                     this.questManager.setPendingResult(missionId, lines);
                     this.updateGrayscale();
-                    this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
+                    this.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, [...lines], () => this.questManager.clearPendingResult(missionId));
                 } else {
                     this.questManager.setStatus(missionId, QuestStatus.READY_FOR_QUIZ);
-                    this.events.emit('mission-status-changed');
+                    this.events.emit(GameEvents.MISSION_STATUS_CHANGED);
 
-                    const lines = [
+                    const lines = missionId === 'obras_famosas' ? [
+                        'Hmm...',
+                        'Talvez precise observar as obras com mais atenção...',
+                        'Tente ler as informações novamente!'
+                    ] : [
                         'Hmm... Não estamos tão certos sobre as relíquias.',
                         'Acho que você precisa dar outra olhada.',
                         'Preste bem atenção nos detalhes!'
                     ];
                     this.questManager.setPendingResult(missionId, lines);
-                    this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
+                    this.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, [...lines], () => this.questManager.clearPendingResult(missionId));
                 }
             });
+        } catch (error) {
+            console.error('[Game] Erro fatal ao iniciar Quiz:', error);
+            this.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, ['Ocorreu um erro ao carregar o desafio.']);
+        }
+    }
+
+    private checkDialogState() {
+        if (!this.isInventoryOpen && !this.isControlsOverlayOpen && !this.isInspectTutorialOpen) {
+             if (this.player) this.player.isInDialogue = false;
         }
     }
 
@@ -470,32 +393,17 @@ export class Game extends Scene {
 
     private setupCameras() {
         this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
-        if (this.cameras.main.postFX) {
-            this.colorMatrix = this.cameras.main.postFX.addColorMatrix();
-            this.colorMatrix.grayscale(this.currentGrayscale);
-        }
+        this.effects.setGrayscale(this.currentGrayscale);
     }
 
     private updateGrayscale() {
-        if (!this.colorMatrix) return;
-
-        const completed = this.questManager.getTotalCompletedMissions();
-        let targetGray = 0.0;
-
-        if (completed === 1) targetGray = 0.3;
-        else if (completed >= 2) targetGray = 0;
-
-        const grayObj = { val: this.currentGrayscale };
-        this.tweens.add({
-            targets: grayObj,
-            val: targetGray,
-            duration: 2000,
-            ease: 'Power2',
-            onUpdate: () => {
-                this.currentGrayscale = grayObj.val;
-                this.colorMatrix.grayscale(this.currentGrayscale);
-            }
-        });
+        // Reduz grayscale conforme missões são completadas
+        const missionsTotal = 4;
+        const missionsCompleted = this.questManager.getTotalCompletedMissions();
+        const progress = missionsCompleted / missionsTotal;
+        
+        this.currentGrayscale = Phaser.Math.Linear(0.82, 0.0, progress);
+        this.effects.setGrayscale(this.currentGrayscale);
     }
 
     update(_time: number, _delta: number) {

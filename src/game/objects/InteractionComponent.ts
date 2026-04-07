@@ -1,4 +1,7 @@
 import * as Phaser from 'phaser';
+import { GameEvents } from '../constants/GameEvents';
+import { LayoutConfig } from '../constants/LayoutConfig';
+import { IPlayerState } from '../types/EntityTypes';
 
 export interface InteractionOptions {
     interactionDistance?: number;
@@ -25,13 +28,8 @@ export class InteractionComponent {
     private playerRef: Phaser.Physics.Arcade.Sprite | null = null;
 
     private promptContainer: Phaser.GameObjects.Container;
-    private dialogContainer: Phaser.GameObjects.Container;
-    private dialogBg: Phaser.GameObjects.Rectangle;
-    private dialogText: Phaser.GameObjects.Text;
-    private escHint: Phaser.GameObjects.Text;
 
     public isPromptVisible: boolean = false;
-    private isDialogVisible: boolean = false;
 
     private interactionDistance: number;
     private dialogMessage: string;
@@ -75,7 +73,6 @@ export class InteractionComponent {
         this.hintOffsetY = options?.hintOffsetY ?? -90;
         this.hintScale = options?.hintScale ?? 3;
 
-        // Arm hint timer immediately; hint does not depend on prompt visibility.
         this.armHint();
 
         // Create Prompt UI
@@ -84,74 +81,45 @@ export class InteractionComponent {
             .setStrokeStyle(2, 0xffffff);
         const promptText = scene.add.text(options?.gapX ?? 0, options?.gapY ?? 0, 'E', {
             fontSize: '20px',
-            color: '#ffffff',
+            color: LayoutConfig.COLORS.WHITE,
             fontStyle: 'bold'
         }).setOrigin(0.5);
         this.promptContainer.add([promptBg, promptText]);
         this.promptContainer.setVisible(false);
 
-        // Create Dialog UI
-        const uiScene = scene.scene.get('UIScene');
-        this.dialogContainer = uiScene.add.container(1920 / 2, 1080 - 180).setScrollFactor(0);
-        this.dialogBg = uiScene.add.rectangle(0, 0, 1200, 100, 0x000000, 0.8)
-            .setStrokeStyle(4, 0xffffff);
-        this.dialogText = uiScene.add.text(-500, 0, this.dialogMessage, {
-            fontSize: '32px',
-            color: '#ffffff',
-            wordWrap: { width: 1000 }
-        }).setOrigin(0, 0);
-
-        this.escHint = uiScene.add.text(-560, 40, 'ESC para fechar', {
-            fontSize: '22px',
-            color: '#ff4d4d'
-        }).setOrigin(0, 1);
-
-        this.dialogContainer.add([this.dialogBg, this.dialogText, this.escHint]);
-        this.dialogContainer.setVisible(false);
-        this.dialogContainer.setDepth(100);
-
-        this.updateDialogLayout();
-
         // Setup Key Listener
         this.keyHandler = (event: KeyboardEvent) => {
             const key = event.key.toLowerCase();
             if (key === 'e') {
-                if ((this.playerRef as any)?.isInDialogue) return;
+                const player = this.playerRef as unknown as IPlayerState;
+                if (player?.isInDialogue) return;
 
                 const now = Date.now();
                 if (now - this.lastInteractionTime < this.INTERACTION_COOLDOWN) return;
 
-                const isPlayerInspecting = (this.playerRef as any)?.isInspecting;
+                const isPlayerInspecting = player?.isInspecting;
                 const canInteract = this.requireInspectionMode ? isPlayerInspecting : !isPlayerInspecting;
 
                 if (this.isPromptVisible && canInteract) {
                     this.lastInteractionTime = now;
-
                     this.markInteracted();
 
                     if (this.dialogueLines) {
-                        // Complex dialogue (managed by scene/DialogueSystem)
+                        // Complex dialogue (managed externally via onInteract)
                         if (this.onInteract) this.onInteract();
                     } else {
                         // Simple single-line dialog
-                        if (!this.isDialogVisible) {
-                            this.showDialog();
-                            if (this.infoKey && this.onInfoCollected) {
-                                this.onInfoCollected(this.infoKey);
-                            }
-                            if (this.onInteract) this.onInteract();
+                        this.showDialog();
+                        if (this.infoKey && this.onInfoCollected) {
+                            this.onInfoCollected(this.infoKey);
                         }
+                        if (this.onInteract) this.onInteract();
                     }
-                }
-            } else if (key === 'escape') {
-                if (this.isDialogVisible) {
-                    this.hideDialog();
                 }
             }
         };
         scene.input.keyboard?.on('keydown', this.keyHandler);
 
-        // Cleanup on parent destroy
         parent.once(Phaser.GameObjects.Events.DESTROY, () => {
             this.destroy();
         });
@@ -163,27 +131,6 @@ export class InteractionComponent {
 
     setDialogMessage(message: string) {
         this.dialogMessage = message;
-        if (this.dialogText) {
-            this.dialogText.setText(message);
-            this.updateDialogLayout();
-        }
-    }
-
-    private updateDialogLayout() {
-        if (!this.dialogBg || !this.dialogText || !this.escHint) return;
-
-        const padding = 100;
-        const minHeight = 80;
-        const textHeight = this.dialogText.displayHeight;
-        const newHeight = Math.max(minHeight, textHeight + padding);
-
-        this.dialogBg.setSize(1200, newHeight);
-
-        // Position text 25px below top
-        this.dialogText.setY(-newHeight / 2 + 25);
-
-        // Update ESC hint position to the bottom left with better margin
-        this.escHint.setY(newHeight / 2 - 15);
     }
 
     update() {
@@ -200,20 +147,18 @@ export class InteractionComponent {
             this.playerRef.x, this.playerRef.y
         );
 
-        const isPlayerInspecting = (this.playerRef as any).isInspecting;
+        const player = this.playerRef as unknown as IPlayerState;
+        const isPlayerInspecting = player.isInspecting;
         const canInteract = this.requireInspectionMode ? isPlayerInspecting : !isPlayerInspecting;
 
         if (dist <= this.interactionDistance && !this.isPromptVisible && canInteract) {
             this.isPromptVisible = true;
             this.promptContainer.setVisible(true);
-            this.scene.events.emit('interaction-prompt-shown', this.parent);
+            this.scene.events.emit(GameEvents.INTERACTION_PROMPT_SHOWN, this.parent);
         } else if ((dist > this.interactionDistance || !canInteract) && this.isPromptVisible) {
             this.isPromptVisible = false;
             this.promptContainer.setVisible(false);
-            this.scene.events.emit('interaction-prompt-hidden', this.parent);
-            if (this.isDialogVisible) {
-                this.hideDialog();
-            }
+            this.scene.events.emit(GameEvents.INTERACTION_PROMPT_HIDDEN, this.parent);
         }
     }
 
@@ -280,49 +225,15 @@ export class InteractionComponent {
     }
 
     private showDialog() {
-        this.updateDialogLayout();
-        this.isDialogVisible = true;
-        this.dialogContainer.setVisible(true);
-
-        const isPlayerInspecting = (this.playerRef as any)?.isInspecting;
-
-        // Use a Tween instead of zoomTo for better interrupt handling
-        this.scene.tweens.add({
-            targets: this.scene.cameras.main,
-            zoom: isPlayerInspecting ? 1.8 : 1.2,
-            duration: 400,
-            ease: 'Power2',
-            overwrite: true
-        });
-
-        this.scene.events.emit('dialogue-started');
+        this.scene.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, [this.dialogMessage]);
     }
-
-    private hideDialog() {
-        this.isDialogVisible = false;
-        this.dialogContainer.setVisible(false);
-
-        const isPlayerInspecting = (this.playerRef as any)?.isInspecting;
-
-        this.scene.tweens.add({
-            targets: this.scene.cameras.main,
-            zoom: isPlayerInspecting ? 1.8 : 1,
-            duration: 400,
-            ease: 'Power2',
-            overwrite: true
-        });
-
-        this.scene.events.emit('dialogue-ended');
-    }
-
 
     destroy() {
         if (this.isPromptVisible) {
-            this.scene.events.emit('interaction-prompt-hidden', this.parent);
+            this.scene.events.emit(GameEvents.INTERACTION_PROMPT_HIDDEN, this.parent);
         }
         this.scene.input.keyboard?.off('keydown', this.keyHandler);
         this.promptContainer.destroy();
-        this.dialogContainer.destroy();
 
         this.disarmHint();
         if (this.hintSprite) {

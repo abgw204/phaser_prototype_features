@@ -1,6 +1,13 @@
-import { Scene, Tilemaps } from 'phaser';
 import { Npc } from './Npc';
-import { NPC_CONFIGS } from './npcConfig';
+import { NPC_CONFIGS } from './Dialog';
+import * as Phaser from 'phaser';
+
+/** Interface helper para propriedades do Tiled */
+interface TiledProperty {
+    name: string;
+    type: string;
+    value: any;
+}
 
 export interface MapData {
     tileLayers: Record<string, Phaser.Tilemaps.TilemapLayer>;
@@ -12,7 +19,7 @@ export class MapManager {
      * Dynamically creates all tile layers and extracts object layers from the map,
      * relying on Tiled custom properties (e.g., 'collider').
      */
-    static setupMap(_scene: Scene, map: Tilemaps.Tilemap, tileset: Tilemaps.Tileset, scale: number = 6): MapData {
+    static setupMap(_scene: Phaser.Scene, map: Phaser.Tilemaps.Tilemap, tileset: Phaser.Tilemaps.Tileset, scale: number = 6): MapData {
         const result: MapData = {
             tileLayers: {},
             objectLayers: {}
@@ -26,7 +33,8 @@ export class MapManager {
             layer.setScale(scale);
 
             // Check for 'collider' custom property set in Tiled editor
-            const colliderProp = (layerData.properties as any[])?.find(p => p.name === 'collider');
+            const properties = layerData.properties as TiledProperty[] | undefined;
+            const colliderProp = properties?.find(p => p.name === 'collider');
             const hasCollider = colliderProp ? colliderProp.value : false;
             
             if (hasCollider) {
@@ -35,7 +43,7 @@ export class MapManager {
             }
 
             // Optional: Support for dynamically setting depth (Z-Index)
-            const depthProp = (layerData.properties as any[])?.find(p => p.name === 'depth');
+            const depthProp = properties?.find(p => p.name === 'depth');
             if (depthProp !== undefined) {
                 layer.setDepth(depthProp.value);
             }
@@ -56,16 +64,17 @@ export class MapManager {
     /**
      * Dynamically loads NPCs from the object layers in the map data.
      */
-    static createNpcs(scene: Scene, mapData: MapData, scale: number = 6): Npc[] {
+    static createNpcs(scene: Phaser.Scene, mapData: MapData, scale: number = 6): Npc[] {
         const npcs: Npc[] = [];
         
         Object.values(mapData.objectLayers).forEach(layer => {
-            layer.objects.forEach((obj: any) => {
-                const objectType = obj.type || obj.class;
+            layer.objects.forEach((obj: Phaser.Types.Tilemaps.TiledObject) => {
+                const objectType = obj.type;
 
-                if (objectType === 'Npc') {
-                    const missionId = obj.properties?.find((p: any) => p.name === 'missionId')?.value;
-                    const flipX = obj.properties?.find((p: any) => p.name === 'flipX')?.value || false;
+                if (objectType === 'Npc' && obj.x !== undefined && obj.y !== undefined) {
+                    const properties = obj.properties as TiledProperty[] | undefined;
+                    const missionId = properties?.find(p => p.name === 'missionId')?.value;
+                    const flipX = properties?.find(p => p.name === 'flipX')?.value || false;
 
                     const config = NPC_CONFIGS[missionId];
                     if (config) {

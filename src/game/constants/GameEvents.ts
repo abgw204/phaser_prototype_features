@@ -14,6 +14,7 @@ export const GameEvents = {
     CONTROLS_OVERLAY_CLOSED: 'controls-overlay-closed',
     INVENTORY_OPENED: 'inventory-opened',
     INVENTORY_CLOSED: 'inventory-closed',
+    INSPECT_MODE_TOGGLED: 'inspect-mode-toggled',
 
     // Missões / Quests
     MISSION_ACCEPTED: 'mission-accepted',

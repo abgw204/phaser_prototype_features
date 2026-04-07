@@ -8,7 +8,6 @@ import { GameEvents } from '../../constants/GameEvents';
  * Overlay que exibe o tutorial do modo de inspeção (SHIFT).
  */
 export class TutorialOverlay extends BasePanel {
-    private bg: Phaser.GameObjects.Rectangle;
     private title: Phaser.GameObjects.Text;
     private image: Phaser.GameObjects.Image;
     private bodyText: Phaser.GameObjects.Text;

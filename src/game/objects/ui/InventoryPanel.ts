@@ -11,7 +11,7 @@ import { MissionDef } from '../../types/GameDataTypes';
 export class InventoryPanel extends BasePanel {
     private dimmer: Phaser.GameObjects.Rectangle;
     private panel: Phaser.GameObjects.Container;
-    private bg: Phaser.GameObjects.Graphics;
+    private bgGraphics: Phaser.GameObjects.Graphics;
     private title: Phaser.GameObjects.Text;
     private hint: Phaser.GameObjects.Text;
     private content: Phaser.GameObjects.Container;
@@ -37,7 +37,7 @@ export class InventoryPanel extends BasePanel {
 
         // Container do painel central
         this.panel = scene.add.container(0, 0);
-        this.bg = scene.add.graphics();
+        this.bgGraphics = scene.add.graphics();
 
         this.title = scene.add.text(0, 0, 'Mapa das Relíquias', {
             fontSize: '42px',
@@ -52,7 +52,7 @@ export class InventoryPanel extends BasePanel {
 
         this.content = scene.add.container(0, 0);
 
-        this.panel.add([this.bg, this.title, this.hint, this.content]);
+        this.panel.add([this.bgGraphics, this.title, this.hint, this.content]);
         this.add([this.dimmer, this.panel]);
     }
 
@@ -87,18 +87,18 @@ export class InventoryPanel extends BasePanel {
         const x = -w / 2;
         const y = -h / 2;
 
-        this.bg.clear();
-        this.bg.fillStyle(LayoutConfig.COLORS.INVENTORY_BG, 1);
-        this.bg.fillRoundedRect(x, y, w, h, 18);
+        this.bgGraphics.clear();
+        this.bgGraphics.fillStyle(LayoutConfig.COLORS.INVENTORY_BG, 1);
+        this.bgGraphics.fillRoundedRect(x, y, w, h, 18);
 
-        this.bg.fillStyle(LayoutConfig.COLORS.INVENTORY_INNER, 0.35);
-        this.bg.fillRoundedRect(x + 10, y + 10, w - 20, h - 20, 14);
+        this.bgGraphics.fillStyle(LayoutConfig.COLORS.INVENTORY_INNER, 0.35);
+        this.bgGraphics.fillRoundedRect(x + 10, y + 10, w - 20, h - 20, 14);
 
-        this.bg.lineStyle(6, LayoutConfig.COLORS.BORDER_BROWN, 0.85);
-        this.bg.strokeRoundedRect(x + 3, y + 3, w - 6, h - 6, 18);
+        this.bgGraphics.lineStyle(6, LayoutConfig.COLORS.BORDER_BROWN, 0.85);
+        this.bgGraphics.strokeRoundedRect(x + 3, y + 3, w - 6, h - 6, 18);
 
-        this.bg.lineStyle(2, 0x000000, 0.12);
-        this.bg.strokeRoundedRect(x + 14, y + 14, w - 28, h - 28, 14);
+        this.bgGraphics.lineStyle(2, 0x000000, 0.12);
+        this.bgGraphics.strokeRoundedRect(x + 14, y + 14, w - 28, h - 28, 14);
     }
 
     public refresh() {

@@ -186,4 +186,9 @@ export class QuizPanel extends BasePanel {
             this.onKeydownHandler = undefined;
         }
     }
+
+    public override destroy(fromScene?: boolean) {
+        this.removeInputListeners();
+        super.destroy(fromScene);
+    }
 }

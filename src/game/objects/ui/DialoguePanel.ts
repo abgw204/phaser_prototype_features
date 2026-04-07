@@ -182,4 +182,9 @@ export class DialoguePanel extends BasePanel {
             this.onKeydownHandler = undefined;
         }
     }
+
+    public override destroy(fromScene?: boolean) {
+        this.removeInputListeners();
+        super.destroy(fromScene);
+    }
 }

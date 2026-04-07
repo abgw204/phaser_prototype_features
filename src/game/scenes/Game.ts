@@ -357,55 +357,68 @@ export class Game extends Scene {
     }
 
     public startQuiz(missionId: string) {
-        const questions = LevelQuizData[missionId];
-        if (!questions) {
-            console.warn(`[Game] No quiz data for missionId: ${missionId}`);
-            return;
-        }
-
-        this.events.emit(GameEvents.SHOW_QUIZ_REQUEST, questions, (score: number) => {
-            const isSuccess = score >= questions.length;
-            
-            if (isSuccess) {
-                this.questManager.setStatus(missionId, QuestStatus.COMPLETED);
-                this.events.emit(GameEvents.MISSION_STATUS_CHANGED);
-
-                const lines = missionId === 'obras_famosas' ? [
-                    `Incrível! Você demonstrou grande conhecimento!`,
-                    'E conseguiu trazer um pouco de cor de volta para este salão!',
-                    'Pegue essa estrela dourada como recompensa!',
-                    'Você precisará delas ao longo da sua jornada!',
-                    'Esse é um grande passo para restaurar a luz do mundo!'
-                ] : [
-                    'Parabéns! Agora você entende as relíquias antigas!',
-                    'O salão está mais iluminado.',
-                    'Pegue essa estrela dourada, ela trará luz ao seu caminho.',
-                    'Você precisará delas para avançar em sua jornada!'
-                ];
-
-                const npc = this.npcs.find(n => (n as unknown as INpcEntity).config && (n as unknown as INpcEntity).config.missionId === missionId);
-                if (npc) npc.play('npc_anim');
-
-                this.questManager.setPendingResult(missionId, lines);
-                this.updateGrayscale();
-                this.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, [...lines], () => this.questManager.clearPendingResult(missionId));
-            } else {
-                this.questManager.setStatus(missionId, QuestStatus.READY_FOR_QUIZ);
-                this.events.emit(GameEvents.MISSION_STATUS_CHANGED);
-
-                const lines = missionId === 'obras_famosas' ? [
-                    'Hmm...',
-                    'Talvez precise observar as obras com mais atenção...',
-                    'Tente ler as informações novamente!'
-                ] : [
-                    'Hmm... Não estamos tão certos sobre as relíquias.',
-                    'Acho que você precisa dar outra olhada.',
-                    'Preste bem atenção nos detalhes!'
-                ];
-                this.questManager.setPendingResult(missionId, lines);
-                this.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, [...lines], () => this.questManager.clearPendingResult(missionId));
+        try {
+            const questions = LevelQuizData[missionId];
+            if (!questions || questions.length === 0) {
+                console.error(`[Game] Quiz data missing or empty for missionId: ${missionId}`);
+                this.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, ['[Erro de Sistema] Não há perguntas cadastradas para esta missão.']);
+                return;
             }
-        });
+
+            if (!this.questManager) {
+                 throw new Error('QuestManager não inicializado');
+            }
+
+            this.events.emit(GameEvents.SHOW_QUIZ_REQUEST, questions, (score: number) => {
+                const isSuccess = score >= questions.length;
+                
+                if (isSuccess) {
+                    this.questManager.setStatus(missionId, QuestStatus.COMPLETED);
+                    this.events.emit(GameEvents.MISSION_STATUS_CHANGED);
+
+                    const lines = missionId === 'obras_famosas' ? [
+                        `Incrível! Você demonstrou grande conhecimento!`,
+                        'E conseguiu trazer um pouco de cor de volta para este salão!',
+                        'Pegue essa estrela dourada como recompensa!',
+                        'Você precisará delas ao longo da sua jornada!',
+                        'Esse é um grande passo para restaurar a luz do mundo!'
+                    ] : [
+                        'Parabéns! Agora você entende as relíquias antigas!',
+                        'O salão está mais iluminado.',
+                        'Pegue essa estrela dourada, ela trará luz ao seu caminho.',
+                        'Você precisará delas para avançar em sua jornada!'
+                    ];
+
+                    const npc = this.npcs.find(n => {
+                        const ent = n as unknown as INpcEntity;
+                        return ent.config && ent.config.missionId === missionId;
+                    });
+                    if (npc) npc.play('npc_anim');
+
+                    this.questManager.setPendingResult(missionId, lines);
+                    this.updateGrayscale();
+                    this.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, [...lines], () => this.questManager.clearPendingResult(missionId));
+                } else {
+                    this.questManager.setStatus(missionId, QuestStatus.READY_FOR_QUIZ);
+                    this.events.emit(GameEvents.MISSION_STATUS_CHANGED);
+
+                    const lines = missionId === 'obras_famosas' ? [
+                        'Hmm...',
+                        'Talvez precise observar as obras com mais atenção...',
+                        'Tente ler as informações novamente!'
+                    ] : [
+                        'Hmm... Não estamos tão certos sobre as relíquias.',
+                        'Acho que você precisa dar outra olhada.',
+                        'Preste bem atenção nos detalhes!'
+                    ];
+                    this.questManager.setPendingResult(missionId, lines);
+                    this.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, [...lines], () => this.questManager.clearPendingResult(missionId));
+                }
+            });
+        } catch (error) {
+            console.error('[Game] Erro fatal ao iniciar Quiz:', error);
+            this.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, ['Ocorreu um erro ao carregar o desafio.']);
+        }
     }
 
     private checkDialogState() {

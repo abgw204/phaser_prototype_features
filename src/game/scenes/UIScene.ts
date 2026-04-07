@@ -4,7 +4,7 @@ import { GameEvents } from '../constants/GameEvents';
 import { SceneNames } from '../constants/SceneNames';
 import { LayoutConfig } from '../constants/LayoutConfig';
 
-import { MissionDef, MissionStepDef, UIInitData } from '../types/GameDataTypes';
+import { MissionDef, MissionStepDef, UIInitData, QuizQuestion } from '../types/GameDataTypes';
 
 // Novos componentes SRP
 import { PhaseStatusPanel } from '../objects/ui/PhaseStatusPanel';
@@ -112,23 +112,46 @@ export class UIScene extends Scene {
 
         // Requisiçōes de UI
         gameScene.events.on(GameEvents.SHOW_DIALOGUE_REQUEST, (lines: string[], onComplete?: () => void) => {
-            this.dialoguePanel.showDialogue(lines, onComplete);
+            if (this.dialoguePanel) {
+                this.dialoguePanel.showDialogue(lines, onComplete);
+            }
         });
 
-        gameScene.events.on(GameEvents.SHOW_QUIZ_REQUEST, (questions: any[], onComplete: (score: number) => void) => {
-            this.quizPanel.startQuiz(questions, onComplete);
+        gameScene.events.on(GameEvents.SHOW_QUIZ_REQUEST, (questions: QuizQuestion[], onComplete: (score: number) => void) => {
+            if (this.quizPanel) {
+                this.quizPanel.startQuiz(questions, onComplete);
+            }
         });
 
         // Prompts de Interação (bloqueio de overlays)
-        gameScene.events.on(GameEvents.INTERACTION_PROMPT_SHOWN, (obj: any) => this.activeInteractionPrompts.add(obj));
-        gameScene.events.on(GameEvents.INTERACTION_PROMPT_HIDDEN, (obj: any) => this.activeInteractionPrompts.delete(obj));
+        gameScene.events.on(GameEvents.INTERACTION_PROMPT_SHOWN, (obj: Phaser.GameObjects.GameObject) => {
+            this.activeInteractionPrompts.add(obj);
+        });
+        gameScene.events.on(GameEvents.INTERACTION_PROMPT_HIDDEN, (obj: Phaser.GameObjects.GameObject) => {
+            this.activeInteractionPrompts.delete(obj);
+        });
 
         // Responsividade
         this.scale.on('resize', () => this.layout());
 
-        this.events.once('shutdown', () => {
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
             this.scale.off('resize');
-            // Nota: unregister de gameScene events deve ser feito aqui se necessário
+            this.input.keyboard?.off('keydown-TAB');
+            this.input.keyboard?.off('keydown-Q');
+
+            // Unregister gameScene events (vazamento de memória evitado)
+            if (gameScene && gameScene.events) {
+                gameScene.events.off(GameEvents.MISSION_ACCEPTED);
+                gameScene.events.off(GameEvents.MISSION_PROGRESS_CHANGED);
+                gameScene.events.off(GameEvents.MISSION_STATUS_CHANGED);
+                gameScene.events.off(GameEvents.DIALOGUE_ENDED);
+                gameScene.events.off(GameEvents.CONTROLS_OVERLAY_CLOSED);
+                gameScene.events.off(GameEvents.INSPECT_MODE_TOGGLED);
+                gameScene.events.off(GameEvents.SHOW_DIALOGUE_REQUEST);
+                gameScene.events.off(GameEvents.SHOW_QUIZ_REQUEST);
+                gameScene.events.off(GameEvents.INTERACTION_PROMPT_SHOWN);
+                gameScene.events.off(GameEvents.INTERACTION_PROMPT_HIDDEN);
+            }
         });
     }
 
@@ -196,11 +219,10 @@ export class UIScene extends Scene {
     }
 
     private canShowOverlay(): boolean {
-        // Regra de prioridade: não abrir se diálogos, quizzes ou prompts estiverem ativos
         if (this.activeInteractionPrompts.size > 0) return false;
         
-        const game = this.scene.get(SceneNames.GAME) as any;
-        if (game?.dialogueSystem?.isVisible || game?.quizUI?.isVisible) return false;
+        // Regra: não abrir se algum painel crítico (dialog/quiz) estiver visível
+        if (this.dialoguePanel?.isVisible || this.quizPanel?.isVisible) return false;
         
         return true;
     }

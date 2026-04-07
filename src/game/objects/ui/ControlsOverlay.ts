@@ -9,7 +9,6 @@ import { GameEvents } from '../../constants/GameEvents';
  * Acionado no início da fase ou pela tecla 'Q'.
  */
 export class ControlsOverlay extends BasePanel {
-    private bg: Phaser.GameObjects.Rectangle;
     private title: Phaser.GameObjects.Text;
     private bodyText: Phaser.GameObjects.Text;
     private escHint: Phaser.GameObjects.Text;

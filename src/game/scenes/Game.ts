@@ -7,6 +7,7 @@ import { InteractiveButton } from '../objects/InteractiveButton';
 import { QuestManager, QuestStatus } from '../objects/QuestManager';
 import { Enemy } from '../objects/Enemy';
 import { GameEvents } from '../constants/GameEvents';
+import { EffectsManager } from '../objects/EffectsManager';
 import { SceneNames } from '../constants/SceneNames';
 import { LayoutConfig } from '../constants/LayoutConfig';
 import { UIScene } from './UIScene';
@@ -19,11 +20,10 @@ export class Game extends Scene {
     rat: Enemy;
     npcs: Npc[] = [];
     questManager: QuestManager;
-    vignetteEffect: Phaser.FX.Vignette | null = null;
-    colorMatrix: Phaser.FX.ColorMatrix | null = null;
     stairsLayer: Phaser.Tilemaps.TilemapLayer | null = null;
     collisionLayer: Phaser.Tilemaps.TilemapLayer | null = null;
-    private currentGrayscale: number = 0.0;
+    private effects!: EffectsManager;
+    private currentGrayscale: number = 0.82;
     private isInventoryOpen: boolean = false;
     private isControlsOverlayOpen: boolean = false;
     private isInspectTutorialOpen: boolean = false;
@@ -55,6 +55,7 @@ export class Game extends Scene {
     }
 
     create() {
+        this.effects = new EffectsManager(this);
         this.createAnimations();
 
         const map = this.make.tilemap({
@@ -100,16 +101,7 @@ export class Game extends Scene {
     private setupEvents() {
         this.events.on(GameEvents.DIALOGUE_STARTED, () => {
             if (this.player) this.player.isInDialogue = true;
-
-            // Camera Zoom Effect local (Side Effect da UI removido)
-            const isPlayerInspecting = this.player?.isInspecting;
-            this.tweens.add({
-                targets: this.cameras.main,
-                zoom: isPlayerInspecting ? 1.8 : 1.2,
-                duration: 400,
-                ease: 'Power2',
-                overwrite: true
-            });
+            this.effects.setZoom(1.2, 400);
         });
 
         this.events.on(GameEvents.DIALOGUE_ENDED, () => {
@@ -123,15 +115,7 @@ export class Game extends Scene {
                 }
             });
 
-            // Restore Camera
-            const isPlayerInspecting = this.player?.isInspecting;
-            this.tweens.add({
-                targets: this.cameras.main,
-                zoom: isPlayerInspecting ? 1.8 : 1.0,
-                duration: 400,
-                ease: 'Power2',
-                overwrite: true
-            });
+            this.effects.setZoom(1.0, 400);
         });
 
         this.events.on(GameEvents.INVENTORY_OPENED, () => {
@@ -165,40 +149,9 @@ export class Game extends Scene {
         });
 
         this.events.on('inspect-mode-toggled', (isInspecting: boolean) => {
-            if (isInspecting) {
-                if (this.vignetteEffect) {
-                    this.tweens.add({
-                        targets: this.vignetteEffect,
-                        radius: 0.6,
-                        strength: 0.6, // amount/strength fallback
-                        duration: 500,
-                        ease: 'Power2'
-                    });
-                }
-                this.tweens.add({
-                    targets: this.cameras.main,
-                    zoom: 1.8,
-                    duration: 500,
-                    ease: 'Power2',
-                    overwrite: true
-                });
-            } else {
-                if (this.vignetteEffect) {
-                    this.tweens.add({
-                        targets: this.vignetteEffect,
-                        radius: 0.9,
-                        strength: 0.6, // amount/strength fallback
-                        duration: 500,
-                        ease: 'Power2'
-                    });
-                }
-                this.tweens.add({
-                    targets: this.cameras.main,
-                    zoom: 1.0,
-                    duration: 500,
-                    ease: 'Power2',
-                    overwrite: true
-                });
+            this.effects.setZoom(isInspecting ? 1.8 : 1.0, 500);
+            if (this.effects.vignetteEffect) {
+                this.effects.setVignette(this.effects.vignetteEffect, isInspecting ? 0.6 : 0.9, 500);
             }
         });
     }
@@ -439,34 +392,17 @@ export class Game extends Scene {
 
     private setupCameras() {
         this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
-        if (this.cameras.main.postFX) {
-            this.colorMatrix = this.cameras.main.postFX.addColorMatrix();
-            this.colorMatrix.grayscale(this.currentGrayscale);
-        }
+        this.effects.setGrayscale(this.currentGrayscale);
     }
 
     private updateGrayscale() {
-        if (!this.colorMatrix) return;
-
-        const completed = this.questManager.getTotalCompletedMissions();
-        let targetGray = 0.0;
-
-        if (completed === 1) targetGray = 0.3;
-        else if (completed >= 2) targetGray = 0;
-
-        const grayObj = { val: this.currentGrayscale };
-        this.tweens.add({
-            targets: grayObj,
-            val: targetGray,
-            duration: 2000,
-            ease: 'Power2',
-            onUpdate: () => {
-                if (this.colorMatrix) {
-                    this.currentGrayscale = grayObj.val;
-                    this.colorMatrix.grayscale(this.currentGrayscale);
-                }
-            }
-        });
+        // Reduz grayscale conforme missões são completadas
+        const missionsTotal = 4;
+        const missionsCompleted = this.questManager.getTotalCompletedMissions();
+        const progress = missionsCompleted / missionsTotal;
+        
+        this.currentGrayscale = Phaser.Math.Linear(0.82, 0.0, progress);
+        this.effects.setGrayscale(this.currentGrayscale);
     }
 
     update(_time: number, _delta: number) {

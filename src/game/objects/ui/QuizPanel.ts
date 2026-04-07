@@ -7,7 +7,6 @@ import { QuizQuestion } from '../../types/GameDataTypes';
 
 /**
  * QuizPanel gerencia a interface de perguntas e respostas.
- * Substitui o antigo QuizUI, integrando-se à estrutura de BasePanel.
  */
 export class QuizPanel extends BasePanel {
     private questions: QuizQuestion[] = [];
@@ -20,8 +19,6 @@ export class QuizPanel extends BasePanel {
     private optionTexts: Phaser.GameObjects.Text[] = [];
     private escHint: Phaser.GameObjects.Text;
 
-    private onKeydownHandler?: (event: KeyboardEvent) => void;
-
     private readonly panelWidth = 1100;
     private readonly panelHeight = 750;
 
@@ -29,9 +26,10 @@ export class QuizPanel extends BasePanel {
         super(scene, 0, 0);
         this.setDepth(LayoutConfig.UI.DEPTHS.QUIZ || 2000);
 
-        this.bg = scene.add.rectangle(0, 0, this.panelWidth, this.panelHeight, 0x000000, 0.95);
-        this.bg.setStrokeStyle(6, 0xffffff, 1);
+        // Fundo Padronizado (Centralizado)
+        this.bg = this.createStandardBg(this.panelWidth, this.panelHeight);
         this.bg.setOrigin(0.5, 0.5);
+        this.bg.setStrokeStyle(6, 0xffffff, 1);
 
         this.questionText = scene.add.text(0, -this.panelHeight / 2 + 60, '', {
             fontSize: '40px',
@@ -40,12 +38,21 @@ export class QuizPanel extends BasePanel {
             wordWrap: { width: 1000, useAdvancedWrap: true }
         }).setOrigin(0.5, 0);
 
-        this.escHint = scene.add.text(-this.panelWidth / 2 + 40, this.panelHeight / 2 - 40, 'ESC para fechar', {
-            fontSize: '22px',
-            color: LayoutConfig.COLORS.DANGER_RED
-        }).setOrigin(0, 1);
+        // Hint Padronizado
+        this.escHint = this.createKeyHint('ESC para fechar');
+        this.escHint.setOrigin(0, 1);
+        this.escHint.setPosition(-this.panelWidth / 2 + 40, this.panelHeight / 2 - 40);
 
         this.add([this.bg, this.questionText, this.escHint]);
+
+        // Input Nativo
+        this.bindKey('W', () => this.moveSelection(-1));
+        this.bindKey('UP', () => this.moveSelection(-1));
+        this.bindKey('S', () => this.moveSelection(1));
+        this.bindKey('DOWN', () => this.moveSelection(1));
+        this.bindKey('SPACE', () => this.selectOption());
+        this.bindKey('ENTER', () => this.selectOption());
+        this.bindKey('ESC', () => this.hide());
     }
 
     public startQuiz(questions: QuizQuestion[], onComplete: (score: number) => void) {
@@ -63,19 +70,12 @@ export class QuizPanel extends BasePanel {
         if (this._isVisible) return;
         super.show();
 
-        // Delay para evitar clique acidental do diálogo anterior
-        this.scene.time.delayedCall(100, () => {
-            this.setupInputListeners();
-        });
-
         const gameScene = this.scene.scene.get(SceneNames.GAME);
         gameScene.events.emit(GameEvents.DIALOGUE_STARTED);
     }
 
     public override hide(duration: number = 200, onComplete?: () => void) {
         if (!this._isVisible) return;
-
-        this.removeInputListeners();
 
         const gameScene = this.scene.scene.get(SceneNames.GAME);
         gameScene.events.emit(GameEvents.DIALOGUE_ENDED);
@@ -98,7 +98,6 @@ export class QuizPanel extends BasePanel {
         const question = this.questions[this.currentQuestionIndex];
         this.questionText.setText(question.text);
 
-        // Limpar opções anteriores
         this.optionTexts.forEach(t => t.destroy());
         this.optionTexts = [];
         this.selectedOptionIndex = 0;
@@ -118,6 +117,7 @@ export class QuizPanel extends BasePanel {
     }
 
     private moveSelection(dir: number) {
+        if (!this._isVisible) return;
         this.selectedOptionIndex = Phaser.Math.Wrap(
             this.selectedOptionIndex + dir,
             0,
@@ -131,6 +131,7 @@ export class QuizPanel extends BasePanel {
     }
 
     private selectOption() {
+        if (!this._isVisible) return;
         const question = this.questions[this.currentQuestionIndex];
         const isCorrect = this.selectedOptionIndex === question.correctIndex;
 
@@ -141,13 +142,11 @@ export class QuizPanel extends BasePanel {
             this.flash(LayoutConfig.COLORS.DANGER_RED || 0xff0000);
         }
 
-        // Delay para feedback visual
-        this.removeInputListeners();
         this.scene.time.delayedCall(500, () => {
+            if (!this._isVisible) return;
             this.currentQuestionIndex++;
             if (this.currentQuestionIndex < this.questions.length) {
                 this.showQuestion();
-                this.setupInputListeners();
             } else {
                 this.hide();
             }
@@ -157,38 +156,8 @@ export class QuizPanel extends BasePanel {
     private flash(color: number | string) {
         const hexColor = typeof color === 'string' ? parseInt(color.replace('#', '0x')) : color;
         this.bg.setStrokeStyle(6, hexColor);
-        this.scene.time.delayedCall(300, () => this.bg.setStrokeStyle(6, 0xffffff));
-    }
-
-    private setupInputListeners() {
-        this.onKeydownHandler = (event: KeyboardEvent) => {
-            if (!this._isVisible) return;
-
-            const key = event.key.toLowerCase();
-            if (key === 'arrowup' || key === 'w') {
-                this.moveSelection(-1);
-            } else if (key === 'arrowdown' || key === 's') {
-                this.moveSelection(1);
-            } else if (key === ' ' || key === 'enter') {
-                event.preventDefault();
-                this.selectOption();
-            } else if (key === 'escape') {
-                event.preventDefault();
-                this.hide();
-            }
-        };
-        window.addEventListener('keydown', this.onKeydownHandler);
-    }
-
-    private removeInputListeners() {
-        if (this.onKeydownHandler) {
-            window.removeEventListener('keydown', this.onKeydownHandler);
-            this.onKeydownHandler = undefined;
-        }
-    }
-
-    public override destroy(fromScene?: boolean) {
-        this.removeInputListeners();
-        super.destroy(fromScene);
+        this.scene.time.delayedCall(300, () => {
+            if (this.bg && this.bg.active) this.bg.setStrokeStyle(6, 0xffffff);
+        });
     }
 }

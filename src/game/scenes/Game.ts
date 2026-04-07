@@ -22,7 +22,6 @@ export class Game extends Scene {
     npcs: Npc[] = [];
     questManager: QuestManager;
     stairsLayer: Phaser.Tilemaps.TilemapLayer | null = null;
-    collisionLayer: Phaser.Tilemaps.TilemapLayer | null = null;
     private effects!: EffectsManager;
     private currentGrayscale: number = 0.82;
     private isInventoryOpen: boolean = false;
@@ -71,7 +70,6 @@ export class Game extends Scene {
         if (tileset) {
             mapData = MapManager.setupMap(this, map, tileset, 6);
             
-            this.collisionLayer = mapData.tileLayers['Collision'] || null;
             this.stairsLayer = mapData.tileLayers['Stairs'] || null;
         }
 
@@ -90,8 +88,8 @@ export class Game extends Scene {
 
         if (mapData) {
             this.createEntities(mapData);
+            this.setupCollisions(mapData.colliders);
         }
-        this.setupCollisions(this.collisionLayer);
         this.setupCameras();
 
         if (this.isControlsOverlayOpen && this.player) {
@@ -381,14 +379,16 @@ export class Game extends Scene {
         }
     }
 
-    private setupCollisions(collisionLayer: Phaser.Tilemaps.TilemapLayer | null) {
-        if (collisionLayer) {
-            this.physics.add.collider(this.player, collisionLayer);
-            this.physics.add.collider(this.rat, collisionLayer);
-            for (const npc of this.npcs) {
-                this.physics.add.collider(npc, collisionLayer);
+    private setupCollisions(colliders: Phaser.Tilemaps.TilemapLayer[]) {
+        colliders.forEach(layer => {
+            if (layer) {
+                this.physics.add.collider(this.player, layer);
+                this.physics.add.collider(this.rat, layer);
+                for (const npc of this.npcs) {
+                    this.physics.add.collider(npc, layer);
+                }
             }
-        }
+        });
     }
 
     private setupCameras() {

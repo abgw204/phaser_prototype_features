@@ -12,17 +12,19 @@ interface TiledProperty {
 export interface MapData {
     tileLayers: Record<string, Phaser.Tilemaps.TilemapLayer>;
     objectLayers: Record<string, Phaser.Tilemaps.ObjectLayer>;
+    colliders: Phaser.Tilemaps.TilemapLayer[]; // Added to track all layers with collision
 }
 
 export class MapManager {
     /**
      * Dynamically creates all tile layers and extracts object layers from the map,
-     * relying on Tiled custom properties (e.g., 'collider').
+     * relying on Tiled custom properties (e.g., 'collider' and 'oneWay').
      */
     static setupMap(_scene: Phaser.Scene, map: Phaser.Tilemaps.Tilemap, tileset: Phaser.Tilemaps.Tileset, scale: number = 6): MapData {
         const result: MapData = {
             tileLayers: {},
-            objectLayers: {}
+            objectLayers: {},
+            colliders: []
         };
 
         // 1. Process Tilemap Layers dynamically
@@ -32,14 +34,33 @@ export class MapManager {
 
             layer.setScale(scale);
 
-            // Check for 'collider' custom property set in Tiled editor
+            // Check for collision-related custom properties set in Tiled editor
             const properties = layerData.properties as TiledProperty[] | undefined;
+            
             const colliderProp = properties?.find(p => p.name === 'collider');
             const hasCollider = colliderProp ? colliderProp.value : false;
+
+            const oneWayProp = properties?.find(p => p.name === 'oneWay');
+            const isOneWay = oneWayProp ? oneWayProp.value : false;
             
-            if (hasCollider) {
+            if (hasCollider || isOneWay) {
                 // Apply collisions to all tiles except empty ones (-1)
                 layer.setCollisionByExclusion([-1]);
+
+                if (isOneWay) {
+                    // Configure tiles as one-way platforms:
+                    // Collision only from top to bottom (player can jump through from below)
+                    layer.forEachTile(tile => {
+                        if (tile.index !== -1) {
+                            tile.collideUp = true;
+                            tile.collideDown = false;
+                            tile.collideLeft = false;
+                            tile.collideRight = false;
+                        }
+                    });
+                }
+                
+                result.colliders.push(layer);
             }
 
             // Optional: Support for dynamically setting depth (Z-Index)

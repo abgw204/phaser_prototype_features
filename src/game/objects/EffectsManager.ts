@@ -12,12 +12,12 @@ export class EffectsManager {
     constructor(scene: Phaser.Scene) {
         this.scene = scene;
         this.camera = scene.cameras.main;
-        
+
         if (this.camera.postFX) {
-            this.colorMatrix = this.camera.postFX.addColorMatrix();
-            this.vignette = this.camera.postFX.addVignette();
-            this.vignette.radius = 0.9;
-            this.vignette.strength = 0.6;
+            //this.colorMatrix = this.camera.postFX.addColorMatrix();
+            //this.vignette = this.camera.postFX.addVignette();
+            //this.vignette.radius = 0.9;
+            //this.vignette.strength = 0.6;
         }
     }
 
@@ -39,8 +39,8 @@ export class EffectsManager {
     /** Ajusta o nível de Grayscale (0 a 1) com transição suave */
     public setGrayscale(amount: number, duration: number = 1000) {
         if (!this.colorMatrix) return;
-        
-        const currentAmount = { val: amount }; 
+
+        const currentAmount = { val: amount };
         // Nota: Idealmente rastrearíamos o valor atual, mas para o protótipo
         // forçamos o valor final ou animamos se necessário.
         this.scene.tweens.add({

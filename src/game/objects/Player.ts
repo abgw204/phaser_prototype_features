@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { IPlayerState } from '../types/EntityTypes';
-import { PLAYER_ASSETS, PLAYER_ANIMS, PLAYER_PHYSICS, PLAYER_MOVEMENT, PLAYER_DAMAGE, PLAYER_KEYS, PLAYER_EVENTS } from './playerConfig';
+import { PLAYER_ASSETS, PLAYER_ANIMS, PLAYER_PHYSICS, PLAYER_MOVEMENT, PLAYER_DAMAGE, PLAYER_KEYS, PLAYER_EVENTS } from './PlayerConfig';
 
 export class Player extends Phaser.Physics.Arcade.Sprite implements IPlayerState {
     keys: any;

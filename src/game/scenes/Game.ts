@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import { MapManager, MapData } from '../objects/MapManager';
 import { Player } from '../objects/Player';
-import { PLAYER_SPAWN } from '../objects/playerConfig';
+import { PLAYER_SPAWN } from '../objects/PlayerConfig';
 import { Npc } from '../objects/Npc';
 import { InteractiveButton } from '../objects/InteractiveButton';
 import { QuestManager, QuestStatus } from '../objects/QuestManager';
@@ -13,6 +13,7 @@ import { LayoutConfig } from '../constants/LayoutConfig';
 import { UIScene } from './UIScene';
 import { INpcEntity } from '../types/EntityTypes';
 import { LevelQuizData } from '../data/LevelQuizData';
+import { NPC_ANIMS } from '../objects/NpcConfig';
 import { MissionRequirements, MissionRegistry } from '../data/MissionRegistry';
 
 export class Game extends Scene {
@@ -346,7 +347,7 @@ export class Game extends Scene {
                         const ent = n as unknown as INpcEntity;
                         return ent.config && ent.config.missionId === missionId;
                     });
-                    if (npc) npc.play('npc_anim');
+                    if (npc) npc.play(NPC_ANIMS.GIVING_STAR.key);
 
                     this.questManager.setPendingResult(missionId, lines);
                     this.updateGrayscale();

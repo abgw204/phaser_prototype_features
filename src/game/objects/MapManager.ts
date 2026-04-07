@@ -1,5 +1,5 @@
 import { Npc } from './Npc';
-import { NPC_CONFIGS } from './npcConfig';
+import { NPC_CONFIGS } from './Dialog';
 import * as Phaser from 'phaser';
 
 /** Interface helper para propriedades do Tiled */

@@ -2,12 +2,7 @@ import * as Phaser from 'phaser';
 import { GameEvents } from '../constants/GameEvents';
 import { SceneNames } from '../constants/SceneNames';
 import { LayoutConfig } from '../constants/LayoutConfig';
-
-export interface QuizQuestion {
-    text: string;
-    options: string[];
-    correctIndex: number;
-}
+import { QuizQuestion } from '../types/GameDataTypes';
 
 export class QuizUI {
     private scene: Phaser.Scene;

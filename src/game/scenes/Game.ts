@@ -13,6 +13,8 @@ import { SceneNames } from '../constants/SceneNames';
 import { LayoutConfig } from '../constants/LayoutConfig';
 import { UIScene } from './UIScene';
 import { INpcEntity } from '../types/EntityTypes';
+import { LevelQuizData } from '../data/LevelQuizData';
+import { MissionRequirements, MissionRegistry } from '../data/MissionRegistry';
 
 export class Game extends Scene {
     player: Player;
@@ -78,35 +80,15 @@ export class Game extends Scene {
         // Initialize Systems
         this.dialogueSystem = new DialogueSystem(this);
         this.quizUI = new QuizUI(this);
-        this.questManager = new QuestManager([
-            { id: 'obras_famosas', requiredInfos: ['statue_info', 'painting_info'] },
-            { id: 'reliquias_antigas', requiredInfos: ['sarcophagus_info', 'fossil_info'] }
-        ]);
+        this.questManager = new QuestManager(MissionRequirements);
 
         this.setupEvents();
 
         this.scene.launch(SceneNames.UI, {
             phaseTitle: 'Museu antigo',
-            missionsTotal: 2,
+            missionsTotal: Object.keys(MissionRegistry).length,
             questManager: this.questManager,
-            missionDefs: {
-                obras_famosas: {
-                    id: 'obras_famosas',
-                    title: 'Obras famosas',
-                    steps: [
-                        { infoKey: 'statue_info', text: 'Verifique a estátua do herói' },
-                        { infoKey: 'painting_info', text: 'Verifique a pintura famosa' }
-                    ]
-                },
-                reliquias_antigas: {
-                    id: 'reliquias_antigas',
-                    title: 'Relíquias antigas',
-                    steps: [
-                        { infoKey: 'sarcophagus_info', text: 'Verifique o sarcófago' },
-                        { infoKey: 'fossil_info', text: 'Verifique o fóssil' }
-                    ]
-                }
-            }
+            missionDefs: MissionRegistry
         });
         this.scene.bringToTop(SceneNames.UI);
 
@@ -317,7 +299,7 @@ export class Game extends Scene {
             hintOffsetY: -100,
             onInfoCollected: (key) => {
                 const changed = this.questManager.collectInfo(key);
-                if (changed) this.events.emit('mission-progress-changed');
+                if (changed) this.events.emit(GameEvents.MISSION_PROGRESS_CHANGED);
             }
         });
 
@@ -372,97 +354,55 @@ export class Game extends Scene {
     }
 
     public startQuiz(missionId: string) {
-        if (missionId === 'obras_famosas') {
-            this.quizUI.startQuiz([
-                {
-                    text: 'Para ancorarmos a estátua de volta à nossa realidade, me diga: em que ano a rigidez da alma humana foi cravada na pedra?',
-                    options: ['1832', '1850', '1901'],
-                    correctIndex: 0
-                },
-                {
-                    text: 'A tela estava coberta por uma névoa escura. De quem é a assinatura que luta para não ser apagada pelo Esquecimento?',
-                    options: ['Leonardo', 'Vincent', 'Picasso'],
-                    correctIndex: 1
-                },
-                {
-                    text: 'Antes de o mundo perder a sua luz, em que ano aquele céu estrelado foi eternizado na pintura?',
-                    options: ['1789', '1889', '1920'],
-                    correctIndex: 1
-                }
-            ], (score: number) => {
-                if (score >= 3) {
-                    this.questManager.setStatus(missionId, QuestStatus.COMPLETED);
-                    this.events.emit(GameEvents.MISSION_STATUS_CHANGED);
-
-                    const lines = [
-                        `Incrível! Você demonstrou grande conhecimento!`,
-                        'E conseguiu trazer um pouco de cor de volta para este salão!',
-                        'Pegue essa estrela dourada como recompensa!',
-                        'Você precisará delas ao longo da sua jornada!',
-                        'Esse é um grande passo para restaurar a luz do mundo!'
-                    ];
-                    const npc = this.npcs.find(n => (n as unknown as INpcEntity).config && (n as unknown as INpcEntity).config.missionId === missionId);
-                    if (npc) npc.play('npc_anim');
-
-                    this.questManager.setPendingResult(missionId, lines);
-                    this.updateGrayscale();
-                    this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
-                } else {
-                    this.questManager.setStatus(missionId, QuestStatus.READY_FOR_QUIZ);
-                    this.events.emit(GameEvents.MISSION_STATUS_CHANGED);
-
-                    const lines = [
-                        'Hmm...',
-                        'Talvez precise observar as obras com mais atenção...',
-                        'Tente ler as informações novamente!'
-                    ];
-                    this.questManager.setPendingResult(missionId, lines);
-                    this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
-                }
-            });
-        } else if (missionId === 'reliquias_antigas') {
-            this.quizUI.startQuiz([
-                {
-                    text: 'Ao abrir o pesado túmulo antigo, qual foi a prova que você encontrou de que a humanidade sempre lutou contra o tempo e a morte?',
-                    options: ['Ouro e Tesouros', 'Uma Múmia preservada', 'Vazio'],
-                    correctIndex: 1
-                },
-                {
-                    text: 'O monarca encravado na pedra viveu eras antes do primeiro ser humano respirar. A qual período o fóssil pertence?',
-                    options: ['Cretáceo', 'Jurássico', 'Triássico'],
-                    correctIndex: 1
-                }
-            ], (score: number) => {
-                if (score >= 2) {
-                    this.questManager.setStatus(missionId, QuestStatus.COMPLETED);
-                    this.events.emit(GameEvents.MISSION_STATUS_CHANGED);
-
-                    const lines = [
-                        'Parabéns! Agora você entende as relíquias antigas!',
-                        'O salão está mais iluminado.',
-                        'Pegue essa estrela dourada, ela trará luz ao seu caminho.',
-                        'Você precisará delas para avançar em sua jornada!'
-                    ];
-                    const npc = this.npcs.find(n => (n as unknown as INpcEntity).config && (n as unknown as INpcEntity).config.missionId === missionId);
-                    if (npc) npc.play('npc_anim');
-
-                    this.questManager.setPendingResult(missionId, lines);
-                    this.updateGrayscale();
-                    this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
-                } else {
-                    this.questManager.setStatus(missionId, QuestStatus.READY_FOR_QUIZ);
-                    this.events.emit(GameEvents.MISSION_STATUS_CHANGED);
-
-                    const lines = [
-                        'Hmm... Não estamos tão certos sobre as relíquias.',
-                        'Acho que você precisa dar outra olhada.',
-                        'Preste bem atenção nos detalhes!'
-                    ];
-                    this.questManager.setPendingResult(missionId, lines);
-                    this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
-                }
-            });
+        const questions = LevelQuizData[missionId];
+        if (!questions) {
+            console.warn(`[Game] No quiz data for missionId: ${missionId}`);
+            return;
         }
+
+        this.quizUI.startQuiz(questions, (score: number) => {
+            const isSuccess = score >= questions.length; // Pass when all correct (current behavior)
+            
+            if (isSuccess) {
+                this.questManager.setStatus(missionId, QuestStatus.COMPLETED);
+                this.events.emit(GameEvents.MISSION_STATUS_CHANGED);
+
+                const lines = missionId === 'obras_famosas' ? [
+                    `Incrível! Você demonstrou grande conhecimento!`,
+                    'E conseguiu trazer um pouco de cor de volta para este salão!',
+                    'Pegue essa estrela dourada como recompensa!',
+                    'Você precisará delas ao longo da sua jornada!',
+                    'Esse é um grande passo para restaurar a luz do mundo!'
+                ] : [
+                    'Parabéns! Agora você entende as relíquias antigas!',
+                    'O salão está mais iluminado.',
+                    'Pegue essa estrela dourada, ela trará luz ao seu caminho.',
+                    'Você precisará delas para avançar em sua jornada!'
+                ];
+
+                const npc = this.npcs.find(n => (n as unknown as INpcEntity).config && (n as unknown as INpcEntity).config.missionId === missionId);
+                if (npc) npc.play('npc_anim');
+
+                this.questManager.setPendingResult(missionId, lines);
+                this.updateGrayscale();
+                this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
+            } else {
+                this.questManager.setStatus(missionId, QuestStatus.READY_FOR_QUIZ);
+                this.events.emit(GameEvents.MISSION_STATUS_CHANGED);
+
+                const lines = missionId === 'obras_famosas' ? [
+                    'Hmm...',
+                    'Talvez precise observar as obras com mais atenção...',
+                    'Tente ler as informações novamente!'
+                ] : [
+                    'Hmm... Não estamos tão certos sobre as relíquias.',
+                    'Acho que você precisa dar outra olhada.',
+                    'Preste bem atenção nos detalhes!'
+                ];
+                this.questManager.setPendingResult(missionId, lines);
+                this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
+            }
+        });
     }
 
     private setupCollisions(collisionLayer: Phaser.Tilemaps.TilemapLayer | null) {

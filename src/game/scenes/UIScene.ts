@@ -4,29 +4,13 @@ import { GameEvents } from '../constants/GameEvents';
 import { SceneNames } from '../constants/SceneNames';
 import { LayoutConfig } from '../constants/LayoutConfig';
 
-type MissionStepDef = {
-    infoKey: string;
-    text: string;
-};
-
-type ActiveMission = {
-    id: string;
-    title: string;
-    steps: MissionStepDef[];
-};
-
-type UIInitData = {
-    phaseTitle: string;
-    missionsTotal: number;
-    questManager: QuestManager;
-    missionDefs: Record<string, ActiveMission>;
-};
+import { MissionDef, MissionStepDef, UIInitData } from '../types/GameDataTypes';
 
 export class UIScene extends Scene {
     private phaseTitle: string;
     private missionsTotal: number;
     private questManager!: QuestManager;
-    private missionDefs: Record<string, ActiveMission> = {};
+    private missionDefs: Record<string, MissionDef> = {};
 
     private root!: Phaser.GameObjects.Container;
     private phasePanel!: Phaser.GameObjects.Container;
@@ -511,7 +495,8 @@ export class UIScene extends Scene {
     private onMissionStatusChanged() {
         // Detect transitions to COMPLETED to show the toast once.
         for (const missionId of Object.keys(this.missionDefs)) {
-            const prev = this.lastMissionStatuses.get(missionId) ?? QuestStatus.IDLE;
+            const mission = this.missionDefs[missionId];
+            const prev = this.lastMissionStatuses.get(mission.id) ?? QuestStatus.IDLE;
             const next = this.questManager.getStatus(missionId);
             if (next === QuestStatus.COMPLETED && prev !== QuestStatus.COMPLETED) {
                 // TAB is blocked while the dialogue UI is visible, so queue the toast
@@ -799,15 +784,15 @@ export class UIScene extends Scene {
 
         const missionIds = Object.keys(this.missionDefs);
         for (const missionId of missionIds) {
-            const def = this.missionDefs[missionId];
-            if (!def) continue;
+            const mission = this.missionDefs[missionId];
+            if (!mission) continue;
 
-            const status = this.questManager.getStatus(def.id);
+            const status = this.questManager.getStatus(mission.id);
             if (status !== QuestStatus.COMPLETED) continue;
 
             sections++;
 
-            const header = this.add.text(0, y, def.title, {
+            const header = this.add.text(0, y, mission.title, {
                 fontSize: '28px',
                 color: '#3b2a1a',
                 fontStyle: 'bold'
@@ -815,7 +800,7 @@ export class UIScene extends Scene {
             this.inventoryContent.add(header);
             y += header.displayHeight + 14;
 
-            def.steps.forEach((step, idx) => {
+            mission.steps.forEach((step, idx) => {
                 const col = idx % cols;
                 const row = Math.floor(idx / cols);
                 const x = col * (slot + gap);
@@ -848,7 +833,7 @@ export class UIScene extends Scene {
                 }
             });
 
-            const rows = Math.ceil(def.steps.length / cols);
+            const rows = Math.ceil(mission.steps.length / cols);
             y += rows * (slot + gap);
             y += 22;
         }
@@ -880,18 +865,18 @@ export class UIScene extends Scene {
     private onMissionAccepted(missionId: string) {
         if (this.activeMissionIds.includes(missionId)) return;
 
-        const def = this.missionDefs[missionId];
-        if (!def) return;
+        const mission = this.missionDefs[missionId];
+        if (!mission) return;
 
         this.activeMissionIds.push(missionId);
-        const panel = this.createMissionPanel(def);
+        const panel = this.createMissionPanel(mission);
         this.missionPanels.push(panel);
         this.root.add(panel);
         this.layout();
         this.refreshAll();
     }
 
-    private createMissionPanel(def: ActiveMission): Phaser.GameObjects.Container {
+    private createMissionPanel(mission: MissionDef): Phaser.GameObjects.Container {
         const panel = this.add.container(0, 0);
         panel.setScrollFactor(0);
         panel.setDepth(5001);
@@ -900,7 +885,7 @@ export class UIScene extends Scene {
         bg.setOrigin(1, 0);
         bg.setStrokeStyle(3, 0xffffff, 0.75);
 
-        const title = this.add.text(0, 0, def.title, {
+        const title = this.add.text(0, 0, mission.title, {
             fontSize: '18px',
             color: '#ffffff',
             fontStyle: 'bold'
@@ -910,7 +895,7 @@ export class UIScene extends Scene {
 
         let currentY = this.padding + 28;
         const stepTexts: Phaser.GameObjects.Text[] = [];
-        def.steps.forEach((step) => {
+        mission.steps.forEach((step: MissionStepDef) => {
             const t = this.add.text(0, 0, '', {
                 fontSize: '16px',
                 color: '#ffffff',
@@ -920,7 +905,7 @@ export class UIScene extends Scene {
             t.setPosition(-this.padding, currentY);
 
             // Initialize with current state
-            const done = this.questManager?.hasInfo(def.id, step.infoKey) ?? false;
+            const done = this.questManager?.hasInfo(mission.id, step.infoKey) ?? false;
             const checkbox = done ? '[✓]' : '[ ]';
             t.setText(`${checkbox} ${step.text}`);
 
@@ -931,17 +916,17 @@ export class UIScene extends Scene {
         // Set final background height based on accumulated text height
         bg.setSize(this.panelWidth, currentY + this.padding / 2);
 
-        this.missionStepTexts.set(def.id, stepTexts);
+        this.missionStepTexts.set(mission.id, stepTexts);
         panel.add([bg, title, ...stepTexts]);
         return panel;
     }
 
     private refreshMissionSteps(missionId: string) {
-        const def = this.missionDefs[missionId];
+        const mission = this.missionDefs[missionId];
         const texts = this.missionStepTexts.get(missionId);
-        if (!def || !texts) return;
+        if (!mission || !texts) return;
 
-        def.steps.forEach((step, idx) => {
+        mission.steps.forEach((step: MissionStepDef, idx: number) => {
             const done = this.questManager.hasInfo(missionId, step.infoKey);
             const checkbox = done ? '[✓]' : '[ ]';
             texts[idx].setText(`${checkbox} ${step.text}`);

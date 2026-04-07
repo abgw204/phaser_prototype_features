@@ -5,8 +5,6 @@ import { PLAYER_SPAWN } from '../objects/playerConfig';
 import { Npc } from '../objects/Npc';
 import { InteractiveButton } from '../objects/InteractiveButton';
 import { QuestManager, QuestStatus } from '../objects/QuestManager';
-import { DialogueSystem } from '../objects/DialogueSystem';
-import { QuizUI } from '../objects/QuizUI';
 import { Enemy } from '../objects/Enemy';
 import { GameEvents } from '../constants/GameEvents';
 import { SceneNames } from '../constants/SceneNames';
@@ -21,8 +19,6 @@ export class Game extends Scene {
     rat: Enemy;
     npcs: Npc[] = [];
     questManager: QuestManager;
-    dialogueSystem: DialogueSystem;
-    quizUI: QuizUI;
     vignetteEffect: Phaser.FX.Vignette | null = null;
     colorMatrix: Phaser.FX.ColorMatrix | null = null;
     stairsLayer: Phaser.Tilemaps.TilemapLayer | null = null;
@@ -78,8 +74,6 @@ export class Game extends Scene {
         }
 
         // Initialize Systems
-        this.dialogueSystem = new DialogueSystem(this);
-        this.quizUI = new QuizUI(this);
         this.questManager = new QuestManager(MissionRequirements);
 
         this.setupEvents();
@@ -106,22 +100,37 @@ export class Game extends Scene {
     private setupEvents() {
         this.events.on(GameEvents.DIALOGUE_STARTED, () => {
             if (this.player) this.player.isInDialogue = true;
-        });
-        this.events.on(GameEvents.DIALOGUE_ENDED, () => {
-            // Delay restoring control slightly so the SPACE press that closed
-            // the dialogue doesn't trigger a jump.
-            this.time.delayedCall(200, () => {
-                // Only restore control if we didn't immediately start another dialogue/quiz
-                if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isInventoryOpen && !this.isControlsOverlayOpen && !this.isInspectTutorialOpen) {
-                    if (this.player) this.player.isInDialogue = false;
 
-                    // Ensure NPCs return to their idle animation
-                    if (this.npcs) {
-                        for (const npc of this.npcs) {
-                            npc.play('npc_idle_anim', true);
-                        }
+            // Camera Zoom Effect local (Side Effect da UI removido)
+            const isPlayerInspecting = this.player?.isInspecting;
+            this.tweens.add({
+                targets: this.cameras.main,
+                zoom: isPlayerInspecting ? 1.8 : 1.2,
+                duration: 400,
+                ease: 'Power2',
+                overwrite: true
+            });
+        });
+
+        this.events.on(GameEvents.DIALOGUE_ENDED, () => {
+            this.time.delayedCall(200, () => {
+                if (this.player) this.player.isInDialogue = false;
+
+                if (this.npcs) {
+                    for (const npc of this.npcs) {
+                        npc.play('npc_idle_anim', true);
                     }
                 }
+            });
+
+            // Restore Camera
+            const isPlayerInspecting = this.player?.isInspecting;
+            this.tweens.add({
+                targets: this.cameras.main,
+                zoom: isPlayerInspecting ? 1.8 : 1.0,
+                duration: 400,
+                ease: 'Power2',
+                overwrite: true
             });
         });
 
@@ -132,9 +141,7 @@ export class Game extends Scene {
 
         this.events.on(GameEvents.INVENTORY_CLOSED, () => {
             this.isInventoryOpen = false;
-            if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isControlsOverlayOpen && !this.isInspectTutorialOpen) {
-                if (this.player) this.player.isInDialogue = false;
-            }
+            this.checkDialogState();
         });
 
         this.events.on(GameEvents.CONTROLS_OVERLAY_OPENED, () => {
@@ -144,9 +151,7 @@ export class Game extends Scene {
 
         this.events.on(GameEvents.CONTROLS_OVERLAY_CLOSED, () => {
             this.isControlsOverlayOpen = false;
-            if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isInventoryOpen && !this.isInspectTutorialOpen) {
-                if (this.player) this.player.isInDialogue = false;
-            }
+            this.checkDialogState();
         });
 
         this.events.on(GameEvents.INSPECT_TUTORIAL_OPENED, () => {
@@ -156,9 +161,7 @@ export class Game extends Scene {
 
         this.events.on(GameEvents.INSPECT_TUTORIAL_CLOSED, () => {
             this.isInspectTutorialOpen = false;
-            if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isInventoryOpen && !this.isControlsOverlayOpen) {
-                if (this.player) this.player.isInDialogue = false;
-            }
+            this.checkDialogState();
         });
 
         this.events.on('inspect-mode-toggled', (isInspecting: boolean) => {
@@ -360,8 +363,8 @@ export class Game extends Scene {
             return;
         }
 
-        this.quizUI.startQuiz(questions, (score: number) => {
-            const isSuccess = score >= questions.length; // Pass when all correct (current behavior)
+        this.events.emit(GameEvents.SHOW_QUIZ_REQUEST, questions, (score: number) => {
+            const isSuccess = score >= questions.length;
             
             if (isSuccess) {
                 this.questManager.setStatus(missionId, QuestStatus.COMPLETED);
@@ -385,7 +388,7 @@ export class Game extends Scene {
 
                 this.questManager.setPendingResult(missionId, lines);
                 this.updateGrayscale();
-                this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
+                this.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, [...lines], () => this.questManager.clearPendingResult(missionId));
             } else {
                 this.questManager.setStatus(missionId, QuestStatus.READY_FOR_QUIZ);
                 this.events.emit(GameEvents.MISSION_STATUS_CHANGED);
@@ -400,9 +403,15 @@ export class Game extends Scene {
                     'Preste bem atenção nos detalhes!'
                 ];
                 this.questManager.setPendingResult(missionId, lines);
-                this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
+                this.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, [...lines], () => this.questManager.clearPendingResult(missionId));
             }
         });
+    }
+
+    private checkDialogState() {
+        if (!this.isInventoryOpen && !this.isControlsOverlayOpen && !this.isInspectTutorialOpen) {
+             if (this.player) this.player.isInDialogue = false;
+        }
     }
 
     private setupCollisions(collisionLayer: Phaser.Tilemaps.TilemapLayer | null) {

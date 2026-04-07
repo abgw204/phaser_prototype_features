@@ -37,6 +37,8 @@ export const LayoutConfig = {
             CONTROLS: 8500,
             TUTORIAL: 8600,
             TOAST: 8800,
+            DIALOGUE: 8900,
+            QUIZ: 8950,
             INVENTORY: 9000
         }
     }

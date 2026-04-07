@@ -81,11 +81,11 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
         if (!this.questManager) return;
 
         const status = this.questManager.getStatus(this.config.missionId);
-        const game = this.scene as Game; // Accessing DialogueSystem and QuizUI from Game scene
+        const game = this.scene as Game;
 
         const pending = this.questManager.getPendingResult(this.config.missionId);
         if (pending) {
-            game.dialogueSystem.showDialogue(pending, () => {
+            this.scene.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, pending, () => {
                 this.questManager?.clearPendingResult(this.config.missionId);
             });
             return;
@@ -93,7 +93,7 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
 
         switch (status) {
             case QuestStatus.IDLE:
-                game.dialogueSystem.showDialogue(this.config.dialogues.intro, () => {
+                this.scene.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, this.config.dialogues.intro, () => {
                     this.questManager?.setStatus(this.config.missionId, QuestStatus.COLLECTING);
                     this.scene.events.emit(GameEvents.MISSION_ACCEPTED, this.config.missionId);
                     this.scene.events.emit(GameEvents.MISSION_STATUS_CHANGED);
@@ -106,11 +106,11 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
                 break;
 
             case QuestStatus.COLLECTING:
-                game.dialogueSystem.showDialogue(this.config.dialogues.collecting);
+                this.scene.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, this.config.dialogues.collecting);
                 break;
 
             case QuestStatus.READY_FOR_QUIZ:
-                game.dialogueSystem.showDialogue(this.config.dialogues.ready, () => {
+                this.scene.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, this.config.dialogues.ready, () => {
                     this.questManager?.setStatus(this.config.missionId, QuestStatus.QUIZ_ACTIVE);
                     this.scene.events.emit(GameEvents.MISSION_STATUS_CHANGED);
                     game.startQuiz(this.config.missionId);
@@ -118,7 +118,7 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
                 break;
 
             case QuestStatus.COMPLETED:
-                game.dialogueSystem.showDialogue(this.config.dialogues.completed);
+                this.scene.events.emit(GameEvents.SHOW_DIALOGUE_REQUEST, this.config.dialogues.completed);
                 break;
         }
     }

@@ -16,6 +16,10 @@ export const GameEvents = {
     INVENTORY_CLOSED: 'inventory-closed',
     INSPECT_MODE_TOGGLED: 'inspect-mode-toggled',
 
+    // Requisiçōes de UI
+    SHOW_DIALOGUE_REQUEST: 'show-dialogue-request',
+    SHOW_QUIZ_REQUEST: 'show-quiz-request',
+
     // Missões / Quests
     MISSION_ACCEPTED: 'mission-accepted',
     MISSION_PROGRESS_CHANGED: 'mission-progress-changed',

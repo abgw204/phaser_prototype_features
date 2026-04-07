@@ -11,6 +11,8 @@ import { PhaseStatusPanel } from '../objects/ui/PhaseStatusPanel';
 import { InventoryPanel } from '../objects/ui/InventoryPanel';
 import { ControlsOverlay } from '../objects/ui/ControlsOverlay';
 import { TutorialOverlay } from '../objects/ui/TutorialOverlay';
+import { DialoguePanel } from '../objects/ui/DialoguePanel';
+import { QuizPanel } from '../objects/ui/QuizPanel';
 import { ToastNotification } from '../objects/ui/ToastNotification';
 
 /**
@@ -30,6 +32,8 @@ export class UIScene extends Scene {
     private inventoryPanel!: InventoryPanel;
     private controlsOverlay!: ControlsOverlay;
     private tutorialOverlay!: TutorialOverlay;
+    private dialoguePanel!: DialoguePanel;
+    private quizPanel!: QuizPanel;
     private toast!: ToastNotification;
 
     // Gestão de Missões (Individual Cards - candidate for further extraction)
@@ -62,6 +66,8 @@ export class UIScene extends Scene {
         this.inventoryPanel = new InventoryPanel(this, this.questManager, this.missionDefs);
         this.controlsOverlay = new ControlsOverlay(this);
         this.tutorialOverlay = new TutorialOverlay(this);
+        this.dialoguePanel = new DialoguePanel(this);
+        this.quizPanel = new QuizPanel(this);
         this.toast = new ToastNotification(this);
 
         this.root.add(this.statusPanel);
@@ -102,6 +108,15 @@ export class UIScene extends Scene {
             if (isInspecting && !this.tutorialOverlay.hasBeenShown && !this.controlsOverlay.isVisible) {
                 this.tutorialOverlay.show();
             }
+        });
+
+        // Requisiçōes de UI
+        gameScene.events.on(GameEvents.SHOW_DIALOGUE_REQUEST, (lines: string[], onComplete?: () => void) => {
+            this.dialoguePanel.showDialogue(lines, onComplete);
+        });
+
+        gameScene.events.on(GameEvents.SHOW_QUIZ_REQUEST, (questions: any[], onComplete: (score: number) => void) => {
+            this.quizPanel.startQuiz(questions, onComplete);
         });
 
         // Prompts de Interação (bloqueio de overlays)
@@ -145,6 +160,8 @@ export class UIScene extends Scene {
         this.inventoryPanel.layout(w, h);
         this.controlsOverlay.layout(w, h);
         this.tutorialOverlay.layout(w, h);
+        this.dialoguePanel.layout(w, h);
+        this.quizPanel.layout(w, h);
         this.toast.layout(w, h);
 
         this.positionMissionPanels();

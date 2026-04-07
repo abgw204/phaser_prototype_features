@@ -6,6 +6,7 @@ import * as Phaser from 'phaser';
  */
 export abstract class BasePanel extends Phaser.GameObjects.Container {
     protected _isVisible: boolean = false;
+    protected bg!: Phaser.GameObjects.Rectangle;
 
     constructor(scene: Phaser.Scene, x: number, y: number) {
         super(scene, x, y);

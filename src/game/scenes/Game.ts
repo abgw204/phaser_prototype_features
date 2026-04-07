@@ -7,7 +7,6 @@ import { InteractiveButton } from '../objects/InteractiveButton';
 import { QuestManager, QuestStatus } from '../objects/QuestManager';
 import { DialogueSystem } from '../objects/DialogueSystem';
 import { QuizUI } from '../objects/QuizUI';
-import { NPC_CONFIGS } from '../objects/npcConfig';
 import { Enemy } from '../objects/Enemy';
 
 export class Game extends Scene {
@@ -230,28 +229,7 @@ export class Game extends Scene {
     }
 
     private createEntities(mapData: MapData) {
-        this.npcs = [];
-
-        // 1. Dynamic NPC loading from Object Layers
-        Object.values(mapData.objectLayers).forEach(layer => {
-            layer.objects.forEach((obj: any) => {
-                const objectType = obj.type || obj.class;
-
-                if (objectType === 'Npc') {
-                    const missionId = obj.properties?.find((p: any) => p.name === 'missionId')?.value;
-                    const flipX = obj.properties?.find((p: any) => p.name === 'flipX')?.value || false;
-
-                    const config = NPC_CONFIGS[missionId];
-                    if (config) {
-                        const npc = new Npc(this, obj.x * 6, obj.y * 6, config);
-                        npc.setFlipX(flipX);
-                        this.npcs.push(npc);
-                    } else {
-                        console.warn(`[Game] NPC at (${obj.x}, ${obj.y}) has invalid missionId: ${missionId}`);
-                    }
-                }
-            });
-        });
+        this.npcs = MapManager.createNpcs(this, mapData, 6);
 
         // 2. Static placements
         this.rat = new Enemy(this, 2000, 315, 1);

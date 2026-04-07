@@ -1,4 +1,6 @@
 import { Scene, Tilemaps } from 'phaser';
+import { Npc } from './Npc';
+import { NPC_CONFIGS } from './npcConfig';
 
 export interface MapData {
     tileLayers: Record<string, Phaser.Tilemaps.TilemapLayer>;
@@ -49,5 +51,34 @@ export class MapManager {
         }
 
         return result;
+    }
+
+    /**
+     * Dynamically loads NPCs from the object layers in the map data.
+     */
+    static createNpcs(scene: Scene, mapData: MapData, scale: number = 6): Npc[] {
+        const npcs: Npc[] = [];
+        
+        Object.values(mapData.objectLayers).forEach(layer => {
+            layer.objects.forEach((obj: any) => {
+                const objectType = obj.type || obj.class;
+
+                if (objectType === 'Npc') {
+                    const missionId = obj.properties?.find((p: any) => p.name === 'missionId')?.value;
+                    const flipX = obj.properties?.find((p: any) => p.name === 'flipX')?.value || false;
+
+                    const config = NPC_CONFIGS[missionId];
+                    if (config) {
+                        const npc = new Npc(scene, obj.x * scale, obj.y * scale, config);
+                        npc.setFlipX(flipX);
+                        npcs.push(npc);
+                    } else {
+                        console.warn(`[MapManager] NPC at (${obj.x}, ${obj.y}) has invalid missionId: ${missionId}`);
+                    }
+                }
+            });
+        });
+
+        return npcs;
     }
 }

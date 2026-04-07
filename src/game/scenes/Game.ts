@@ -8,6 +8,11 @@ import { QuestManager, QuestStatus } from '../objects/QuestManager';
 import { DialogueSystem } from '../objects/DialogueSystem';
 import { QuizUI } from '../objects/QuizUI';
 import { Enemy } from '../objects/Enemy';
+import { GameEvents } from '../constants/GameEvents';
+import { SceneNames } from '../constants/SceneNames';
+import { LayoutConfig } from '../constants/LayoutConfig';
+import { UIScene } from './UIScene';
+import { INpcEntity } from '../types/EntityTypes';
 
 export class Game extends Scene {
     player: Player;
@@ -16,8 +21,8 @@ export class Game extends Scene {
     questManager: QuestManager;
     dialogueSystem: DialogueSystem;
     quizUI: QuizUI;
-    vignetteEffect: any;
-    colorMatrix: any;
+    vignetteEffect: Phaser.FX.Vignette | null = null;
+    colorMatrix: Phaser.FX.ColorMatrix | null = null;
     stairsLayer: Phaser.Tilemaps.TilemapLayer | null = null;
     collisionLayer: Phaser.Tilemaps.TilemapLayer | null = null;
     private currentGrayscale: number = 0.0;
@@ -26,7 +31,7 @@ export class Game extends Scene {
     private isInspectTutorialOpen: boolean = false;
 
     constructor() {
-        super('Game');
+        super(SceneNames.GAME);
     }
 
     preload() {
@@ -80,7 +85,7 @@ export class Game extends Scene {
 
         this.setupEvents();
 
-        this.scene.launch('UIScene', {
+        this.scene.launch(SceneNames.UI, {
             phaseTitle: 'Museu antigo',
             missionsTotal: 2,
             questManager: this.questManager,
@@ -103,7 +108,7 @@ export class Game extends Scene {
                 }
             }
         });
-        this.scene.bringToTop('UIScene');
+        this.scene.bringToTop(SceneNames.UI);
 
         if (mapData) {
             this.createEntities(mapData);
@@ -117,10 +122,10 @@ export class Game extends Scene {
     }
 
     private setupEvents() {
-        this.events.on('dialogue-started', () => {
+        this.events.on(GameEvents.DIALOGUE_STARTED, () => {
             if (this.player) this.player.isInDialogue = true;
         });
-        this.events.on('dialogue-ended', () => {
+        this.events.on(GameEvents.DIALOGUE_ENDED, () => {
             // Delay restoring control slightly so the SPACE press that closed
             // the dialogue doesn't trigger a jump.
             this.time.delayedCall(200, () => {
@@ -138,36 +143,36 @@ export class Game extends Scene {
             });
         });
 
-        this.events.on('inventory-opened', () => {
+        this.events.on(GameEvents.INVENTORY_OPENED, () => {
             this.isInventoryOpen = true;
             if (this.player) this.player.isInDialogue = true;
         });
 
-        this.events.on('inventory-closed', () => {
+        this.events.on(GameEvents.INVENTORY_CLOSED, () => {
             this.isInventoryOpen = false;
             if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isControlsOverlayOpen && !this.isInspectTutorialOpen) {
                 if (this.player) this.player.isInDialogue = false;
             }
         });
 
-        this.events.on('controls-overlay-opened', () => {
+        this.events.on(GameEvents.CONTROLS_OVERLAY_OPENED, () => {
             this.isControlsOverlayOpen = true;
             if (this.player) this.player.isInDialogue = true;
         });
 
-        this.events.on('controls-overlay-closed', () => {
+        this.events.on(GameEvents.CONTROLS_OVERLAY_CLOSED, () => {
             this.isControlsOverlayOpen = false;
             if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isInventoryOpen && !this.isInspectTutorialOpen) {
                 if (this.player) this.player.isInDialogue = false;
             }
         });
 
-        this.events.on('inspect-tutorial-opened', () => {
+        this.events.on(GameEvents.INSPECT_TUTORIAL_OPENED, () => {
             this.isInspectTutorialOpen = true;
             if (this.player) this.player.isInDialogue = true;
         });
 
-        this.events.on('inspect-tutorial-closed', () => {
+        this.events.on(GameEvents.INSPECT_TUTORIAL_CLOSED, () => {
             this.isInspectTutorialOpen = false;
             if (!this.dialogueSystem.isVisible && !this.quizUI.isVisible && !this.isInventoryOpen && !this.isControlsOverlayOpen) {
                 if (this.player) this.player.isInDialogue = false;
@@ -267,7 +272,7 @@ export class Game extends Scene {
             hintOffsetY: 42,
             onInfoCollected: (key) => {
                 const changed = this.questManager.collectInfo(key);
-                if (changed) this.events.emit('mission-progress-changed');
+                if (changed) this.events.emit(GameEvents.MISSION_PROGRESS_CHANGED);
             }
         });
 
@@ -282,7 +287,7 @@ export class Game extends Scene {
             hintOffsetY: -140,
             onInfoCollected: (key) => {
                 const changed = this.questManager.collectInfo(key);
-                if (changed) this.events.emit('mission-progress-changed');
+                if (changed) this.events.emit(GameEvents.MISSION_PROGRESS_CHANGED);
             }
         });
 
@@ -297,7 +302,7 @@ export class Game extends Scene {
             hintOffsetY: -120,
             onInfoCollected: (key) => {
                 const changed = this.questManager.collectInfo(key);
-                if (changed) this.events.emit('mission-progress-changed');
+                if (changed) this.events.emit(GameEvents.MISSION_PROGRESS_CHANGED);
             }
         });
 
@@ -329,8 +334,10 @@ export class Game extends Scene {
             hintOffsetY: -120,
             onInteract: () => {
                 const collected = this.questManager.getTotalCompletedMissions();
-                const uiScene = this.scene.get('UIScene') as any;
-                uiScene.showPhaseCompleteUI(collected, maxStars);
+                const uiScene = this.scene.get(SceneNames.UI) as UIScene;
+                if (uiScene) {
+                    uiScene.showPhaseCompleteUI(collected, maxStars);
+                }
             }
         });
 
@@ -339,16 +346,16 @@ export class Game extends Scene {
         const floatStar = this.add.image(-10, 0, 'star').setScale(2.5);
         const endPhase_floatText = this.add.text(6, 0, `0/${maxStars}`, {
             fontSize: '22px',
-            color: '#ffff8bff',
+            color: LayoutConfig.COLORS.STAR_YELLOW,
             fontStyle: 'bold',
-            stroke: '#000000',
+            stroke: LayoutConfig.COLORS.BLACK,
             strokeThickness: 4
         }).setOrigin(0, 0.5);
 
         endPhase_container.add([floatStar, endPhase_floatText]);
         endPhase_btn.add(endPhase_container);
 
-        this.events.on('mission-status-changed', () => {
+        this.events.on(GameEvents.MISSION_STATUS_CHANGED, () => {
             const collected = this.questManager.getTotalCompletedMissions();
             endPhase_floatText.setText(`${collected}/${maxStars}`);
 
@@ -385,7 +392,7 @@ export class Game extends Scene {
             ], (score: number) => {
                 if (score >= 3) {
                     this.questManager.setStatus(missionId, QuestStatus.COMPLETED);
-                    this.events.emit('mission-status-changed');
+                    this.events.emit(GameEvents.MISSION_STATUS_CHANGED);
 
                     const lines = [
                         `Incrível! Você demonstrou grande conhecimento!`,
@@ -394,7 +401,7 @@ export class Game extends Scene {
                         'Você precisará delas ao longo da sua jornada!',
                         'Esse é um grande passo para restaurar a luz do mundo!'
                     ];
-                    const npc = this.npcs.find(n => (n as any).config && (n as any).config.missionId === missionId);
+                    const npc = this.npcs.find(n => (n as unknown as INpcEntity).config && (n as unknown as INpcEntity).config.missionId === missionId);
                     if (npc) npc.play('npc_anim');
 
                     this.questManager.setPendingResult(missionId, lines);
@@ -402,7 +409,7 @@ export class Game extends Scene {
                     this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
                 } else {
                     this.questManager.setStatus(missionId, QuestStatus.READY_FOR_QUIZ);
-                    this.events.emit('mission-status-changed');
+                    this.events.emit(GameEvents.MISSION_STATUS_CHANGED);
 
                     const lines = [
                         'Hmm...',
@@ -428,7 +435,7 @@ export class Game extends Scene {
             ], (score: number) => {
                 if (score >= 2) {
                     this.questManager.setStatus(missionId, QuestStatus.COMPLETED);
-                    this.events.emit('mission-status-changed');
+                    this.events.emit(GameEvents.MISSION_STATUS_CHANGED);
 
                     const lines = [
                         'Parabéns! Agora você entende as relíquias antigas!',
@@ -436,7 +443,7 @@ export class Game extends Scene {
                         'Pegue essa estrela dourada, ela trará luz ao seu caminho.',
                         'Você precisará delas para avançar em sua jornada!'
                     ];
-                    const npc = this.npcs.find(n => (n as any).config && (n as any).config.missionId === missionId);
+                    const npc = this.npcs.find(n => (n as unknown as INpcEntity).config && (n as unknown as INpcEntity).config.missionId === missionId);
                     if (npc) npc.play('npc_anim');
 
                     this.questManager.setPendingResult(missionId, lines);
@@ -444,7 +451,7 @@ export class Game extends Scene {
                     this.dialogueSystem.showDialogue([...lines], () => this.questManager.clearPendingResult(missionId));
                 } else {
                     this.questManager.setStatus(missionId, QuestStatus.READY_FOR_QUIZ);
-                    this.events.emit('mission-status-changed');
+                    this.events.emit(GameEvents.MISSION_STATUS_CHANGED);
 
                     const lines = [
                         'Hmm... Não estamos tão certos sobre as relíquias.',
@@ -492,8 +499,10 @@ export class Game extends Scene {
             duration: 2000,
             ease: 'Power2',
             onUpdate: () => {
-                this.currentGrayscale = grayObj.val;
-                this.colorMatrix.grayscale(this.currentGrayscale);
+                if (this.colorMatrix) {
+                    this.currentGrayscale = grayObj.val;
+                    this.colorMatrix.grayscale(this.currentGrayscale);
+                }
             }
         });
     }

@@ -1,6 +1,8 @@
 import * as Phaser from 'phaser';
 import { InteractionComponent } from './InteractionComponent';
 import { QuestManager, QuestStatus } from './QuestManager';
+import { GameEvents } from '../constants/GameEvents';
+import { Game } from '../scenes/Game';
 
 export interface NpcConfig {
     missionId: string;
@@ -79,11 +81,11 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
         if (!this.questManager) return;
 
         const status = this.questManager.getStatus(this.config.missionId);
-        const scene = this.scene as any; // Accessing DialogueSystem and QuizUI from Game scene
+        const game = this.scene as Game; // Accessing DialogueSystem and QuizUI from Game scene
 
         const pending = this.questManager.getPendingResult(this.config.missionId);
         if (pending) {
-            scene.dialogueSystem.showDialogue(pending, () => {
+            game.dialogueSystem.showDialogue(pending, () => {
                 this.questManager?.clearPendingResult(this.config.missionId);
             });
             return;
@@ -91,10 +93,10 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
 
         switch (status) {
             case QuestStatus.IDLE:
-                scene.dialogueSystem.showDialogue(this.config.dialogues.intro, () => {
+                game.dialogueSystem.showDialogue(this.config.dialogues.intro, () => {
                     this.questManager?.setStatus(this.config.missionId, QuestStatus.COLLECTING);
-                    this.scene.events.emit('mission-accepted', this.config.missionId);
-                    this.scene.events.emit('mission-status-changed');
+                    this.scene.events.emit(GameEvents.MISSION_ACCEPTED, this.config.missionId);
+                    this.scene.events.emit(GameEvents.MISSION_STATUS_CHANGED);
 
                     this.missionAccepted = true;
                     if (this.exclamationIcon && this.exclamationIcon.active) {
@@ -104,19 +106,19 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
                 break;
 
             case QuestStatus.COLLECTING:
-                scene.dialogueSystem.showDialogue(this.config.dialogues.collecting);
+                game.dialogueSystem.showDialogue(this.config.dialogues.collecting);
                 break;
 
             case QuestStatus.READY_FOR_QUIZ:
-                scene.dialogueSystem.showDialogue(this.config.dialogues.ready, () => {
+                game.dialogueSystem.showDialogue(this.config.dialogues.ready, () => {
                     this.questManager?.setStatus(this.config.missionId, QuestStatus.QUIZ_ACTIVE);
-                    this.scene.events.emit('mission-status-changed');
-                    scene.startQuiz(this.config.missionId);
+                    this.scene.events.emit(GameEvents.MISSION_STATUS_CHANGED);
+                    game.startQuiz(this.config.missionId);
                 });
                 break;
 
             case QuestStatus.COMPLETED:
-                scene.dialogueSystem.showDialogue(this.config.dialogues.completed);
+                game.dialogueSystem.showDialogue(this.config.dialogues.completed);
                 break;
         }
     }

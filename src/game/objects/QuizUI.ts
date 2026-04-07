@@ -1,4 +1,7 @@
 import * as Phaser from 'phaser';
+import { GameEvents } from '../constants/GameEvents';
+import { SceneNames } from '../constants/SceneNames';
+import { LayoutConfig } from '../constants/LayoutConfig';
 
 export interface QuizQuestion {
     text: string;
@@ -22,7 +25,7 @@ export class QuizUI {
     constructor(scene: Phaser.Scene) {
         this.scene = scene;
 
-        const uiScene = scene.scene.get('UIScene');
+        const uiScene = scene.scene.get(SceneNames.UI);
         this.quizContainer = uiScene.add.container(1920 / 2, 1080 / 2).setScrollFactor(0);
 
         const quizBg = uiScene.add.rectangle(0, 0, 1100, 750, 0x000000, 0.95)
@@ -30,7 +33,7 @@ export class QuizUI {
 
         this.questionText = uiScene.add.text(0, -320, '', {
             fontSize: '40px',
-            color: '#ffffff',
+            color: LayoutConfig.COLORS.WHITE,
             align: 'center',
             wordWrap: { width: 1000 }
         }).setOrigin(0.5, 0);
@@ -64,7 +67,7 @@ export class QuizUI {
 
         this.showQuestion();
         this.quizContainer.setVisible(true);
-        this.scene.events.emit('dialogue-started');
+        this.scene.events.emit(GameEvents.DIALOGUE_STARTED);
 
         // Delay enabling input by one frame so the SPACE that closed the
         // last dialogue line doesn't also immediately answer the first question.
@@ -83,10 +86,10 @@ export class QuizUI {
         this.selectedOptionIndex = 0;
 
         question.options.forEach((opt, idx) => {
-            const uiScene = this.scene.scene.get('UIScene');
+            const uiScene = this.scene.scene.get(SceneNames.UI);
             const optText = uiScene.add.text(0, 20 + (idx * 85), opt, {
                 fontSize: '32px',
-                color: idx === 0 ? '#ffff00' : '#ffffff'
+                color: idx === 0 ? LayoutConfig.COLORS.GOLD : LayoutConfig.COLORS.WHITE
             }).setOrigin(0.5);
             this.optionTexts.push(optText);
             this.quizContainer.add(optText);
@@ -103,7 +106,7 @@ export class QuizUI {
         );
 
         this.optionTexts.forEach((text, idx) => {
-            text.setColor(idx === this.selectedOptionIndex ? '#ffff00' : '#ffffff');
+            text.setColor(idx === this.selectedOptionIndex ? LayoutConfig.COLORS.GOLD : LayoutConfig.COLORS.WHITE);
             text.setScale(idx === this.selectedOptionIndex ? 1.1 : 1);
         });
     }
@@ -139,7 +142,7 @@ export class QuizUI {
     private finishQuiz() {
         this.isVisible = false;
         this.quizContainer.setVisible(false);
-        this.scene.events.emit('dialogue-ended');
+        this.scene.events.emit(GameEvents.DIALOGUE_ENDED);
         this.onComplete(this.score);
     }
 }

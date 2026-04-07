@@ -1,5 +1,8 @@
 import { Scene } from 'phaser';
 import { QuestManager, QuestStatus } from '../objects/QuestManager';
+import { GameEvents } from '../constants/GameEvents';
+import { SceneNames } from '../constants/SceneNames';
+import { LayoutConfig } from '../constants/LayoutConfig';
 
 type MissionStepDef = {
     infoKey: string;
@@ -38,8 +41,8 @@ export class UIScene extends Scene {
     private activeMissionIds: string[] = [];
     private missionStepTexts: Map<string, Phaser.GameObjects.Text[]> = new Map();
 
-    private padding: number = 16;
-    private panelWidth: number = 360;
+    private padding: number = LayoutConfig.UI.PADDING;
+    private panelWidth: number = LayoutConfig.UI.PANEL_WIDTH;
 
     private inventoryOverlay!: Phaser.GameObjects.Container;
     private inventoryDimmer!: Phaser.GameObjects.Rectangle;
@@ -49,12 +52,12 @@ export class UIScene extends Scene {
     private inventoryHint!: Phaser.GameObjects.Text;
     private inventoryContent!: Phaser.GameObjects.Container;
     private inventoryIsVisible: boolean = false;
-    private inventoryPanelW: number = 1200;
-    private inventoryPanelH: number = 800;
+    private inventoryPanelW: number = LayoutConfig.UI.INVENTORY.MAX_WIDTH;
+    private inventoryPanelH: number = LayoutConfig.UI.INVENTORY.MAX_HEIGHT;
 
-    private readonly inventoryPadding: number = 34;
-    private readonly inventorySlotSize: number = 128;
-    private readonly inventorySlotGap: number = 18;
+    private readonly inventoryPadding: number = LayoutConfig.UI.INVENTORY.PADDING;
+    private readonly inventorySlotSize: number = LayoutConfig.UI.INVENTORY.SLOT_SIZE;
+    private readonly inventorySlotGap: number = LayoutConfig.UI.INVENTORY.SLOT_GAP;
 
     private readonly relicTextureByInfoKey: Record<string, string> = {
         statue_info: 'relic_statue',
@@ -105,7 +108,7 @@ export class UIScene extends Scene {
     private onInteractionPromptHiddenHandler!: (obj: Phaser.GameObjects.GameObject) => void;
 
     constructor() {
-        super('UIScene');
+        super(SceneNames.UI);
         this.phaseTitle = '';
         this.missionsTotal = 1;
     }
@@ -120,7 +123,7 @@ export class UIScene extends Scene {
     create() {
         this.root = this.add.container(-20, 0);
         this.root.setScrollFactor(0);
-        this.root.setDepth(5000);
+        this.root.setDepth(LayoutConfig.UI.DEPTHS.ROOT);
 
         this.createPhasePanel();
         this.createStarsPanel();
@@ -133,17 +136,17 @@ export class UIScene extends Scene {
         this.onResize = () => this.layout();
         this.scale.on('resize', this.onResize);
 
-        const gameScene = this.scene.get('Game') as Scene;
+        const gameScene = this.scene.get(SceneNames.GAME) as Scene;
         this.onMissionAcceptedHandler = (missionId: string) => this.onMissionAccepted(missionId);
         this.onMissionProgressHandler = () => this.refreshAll();
         this.onMissionStatusHandler = () => this.onMissionStatusChanged();
 
-        gameScene.events.on('mission-accepted', this.onMissionAcceptedHandler);
-        gameScene.events.on('mission-progress-changed', this.onMissionProgressHandler);
-        gameScene.events.on('mission-status-changed', this.onMissionStatusHandler);
+        gameScene.events.on(GameEvents.MISSION_ACCEPTED, this.onMissionAcceptedHandler);
+        gameScene.events.on(GameEvents.MISSION_PROGRESS_CHANGED, this.onMissionProgressHandler);
+        gameScene.events.on(GameEvents.MISSION_STATUS_CHANGED, this.onMissionStatusHandler);
 
         this.onGameDialogueEndedHandler = () => this.onGameDialogueEnded();
-        gameScene.events.on('dialogue-ended', this.onGameDialogueEndedHandler);
+        gameScene.events.on(GameEvents.DIALOGUE_ENDED, this.onGameDialogueEndedHandler);
 
         this.onTabHandler = (event: KeyboardEvent) => {
             event.preventDefault();
@@ -164,24 +167,24 @@ export class UIScene extends Scene {
         this.onInteractionPromptHiddenHandler = (obj: Phaser.GameObjects.GameObject) => {
             this.activeInteractionPrompts.delete(obj);
         };
-        gameScene.events.on('interaction-prompt-shown', this.onInteractionPromptShownHandler);
-        gameScene.events.on('interaction-prompt-hidden', this.onInteractionPromptHiddenHandler);
+        gameScene.events.on(GameEvents.INTERACTION_PROMPT_SHOWN, this.onInteractionPromptShownHandler);
+        gameScene.events.on(GameEvents.INTERACTION_PROMPT_HIDDEN, this.onInteractionPromptHiddenHandler);
         
         // Activate controls guide at the start of the scene
         this.showControlsOverlay();
 
         this.events.once('shutdown', () => {
             this.scale.off('resize', this.onResize);
-            gameScene.events.off('mission-accepted', this.onMissionAcceptedHandler);
-            gameScene.events.off('mission-progress-changed', this.onMissionProgressHandler);
-            gameScene.events.off('mission-status-changed', this.onMissionStatusHandler);
-            if (this.onGameDialogueEndedHandler) gameScene.events.off('dialogue-ended', this.onGameDialogueEndedHandler);
+            gameScene.events.off(GameEvents.MISSION_ACCEPTED, this.onMissionAcceptedHandler);
+            gameScene.events.off(GameEvents.MISSION_PROGRESS_CHANGED, this.onMissionProgressHandler);
+            gameScene.events.off(GameEvents.MISSION_STATUS_CHANGED, this.onMissionStatusHandler);
+            if (this.onGameDialogueEndedHandler) gameScene.events.off(GameEvents.DIALOGUE_ENDED, this.onGameDialogueEndedHandler);
             this.input.keyboard?.off('keydown-TAB', this.onTabHandler);
             this.input.keyboard?.off('keydown-Q', this.onQHandler);
             if (this.onEscControlsHandler) this.input.keyboard?.off('keydown', this.onEscControlsHandler);
             if (this.onEscInspectTutorialHandler) this.input.keyboard?.off('keydown', this.onEscInspectTutorialHandler);
-            gameScene.events.off('interaction-prompt-shown', this.onInteractionPromptShownHandler);
-            gameScene.events.off('interaction-prompt-hidden', this.onInteractionPromptHiddenHandler);
+            gameScene.events.off(GameEvents.INTERACTION_PROMPT_SHOWN, this.onInteractionPromptShownHandler);
+            gameScene.events.off(GameEvents.INTERACTION_PROMPT_HIDDEN, this.onInteractionPromptHiddenHandler);
         });
 
         // Seed last-known statuses so we only toast on transitions.
@@ -198,16 +201,16 @@ export class UIScene extends Scene {
 
         this.missionCompleteToast = this.add.container(cx, y);
         this.missionCompleteToast.setScrollFactor(0);
-        this.missionCompleteToast.setDepth(8800);
+        this.missionCompleteToast.setDepth(LayoutConfig.UI.DEPTHS.TOAST);
         this.missionCompleteToast.setVisible(false);
 
-        this.missionCompleteToastBg = this.add.rectangle(0, 0, 860, 120, 0x000000, 0.85);
+        this.missionCompleteToastBg = this.add.rectangle(0, 0, LayoutConfig.UI.TOAST.WIDTH, LayoutConfig.UI.TOAST.HEIGHT, 0x000000, 0.85);
         this.missionCompleteToastBg.setStrokeStyle(4, 0xffffff, 0.95);
         this.missionCompleteToastBg.setOrigin(0.5);
 
         this.missionCompleteToastText = this.add.text(0, 0, 'Missão concluída\nAperte TAB para ver as relíquias', {
             fontSize: '28px',
-            color: '#ffffff',
+            color: LayoutConfig.COLORS.WHITE,
             align: 'center',
             wordWrap: { width: 800, useAdvancedWrap: true },
             lineSpacing: 8
@@ -277,20 +280,20 @@ export class UIScene extends Scene {
 
         const title = this.add.text(0, 0, this.phaseTitle, {
             fontSize: '24px',
-            color: '#ffffff',
+            color: LayoutConfig.COLORS.WHITE,
             fontStyle: 'bold'
         });
         title.setOrigin(1, 0);
 
         this.missionsText = this.add.text(0, 0, '', {
             fontSize: '18px',
-            color: '#ffffff'
+            color: LayoutConfig.COLORS.WHITE
         });
         this.missionsText.setOrigin(1, 0);
 
         this.objectsText = this.add.text(0, 0, '', {
             fontSize: '18px',
-            color: '#ffffff'
+            color: LayoutConfig.COLORS.WHITE
         });
         this.objectsText.setOrigin(1, 0);
 
@@ -311,9 +314,9 @@ export class UIScene extends Scene {
 
         this.starsText = this.add.text(this.starIcon.displayWidth + 10, 0, '0', {
             fontSize: '48px',
-            color: '#ffffff',
+            color: LayoutConfig.COLORS.WHITE,
             fontStyle: 'bold',
-            stroke: '#000000',
+            stroke: LayoutConfig.COLORS.BLACK,
             strokeThickness: 4
         }).setOrigin(0, 0);
 
@@ -336,13 +339,13 @@ export class UIScene extends Scene {
 
         this.inventoryTitle = this.add.text(0, 0, 'Mapa das Relíquias', {
             fontSize: '42px',
-            color: '#3b2a1a',
+            color: LayoutConfig.COLORS.PRIMARY_BROWN,
             fontStyle: 'bold'
         }).setOrigin(0.5, 0);
 
         this.inventoryHint = this.add.text(0, 0, '[TAB] para fechar', {
             fontSize: '22px',
-            color: '#5a4634'
+            color: LayoutConfig.COLORS.SECONDARY_BROWN
         }).setOrigin(0.5, 0);
 
         this.inventoryContent = this.add.container(0, 0);
@@ -401,7 +404,7 @@ export class UIScene extends Scene {
 
         this.inspectTutorialTitle = this.add.text(0, 0, 'Modo inspecionar', {
             fontSize: '44px',
-            color: '#ffffff',
+            color: LayoutConfig.COLORS.WHITE,
             fontStyle: 'bold'
         }).setOrigin(0.5, 0);
 
@@ -413,7 +416,7 @@ export class UIScene extends Scene {
             "Use a tecla '⇧' (SHIFT) para entrar no modo inspecionar. Nesse modo, você conseguirá interagir com as relíquias presentes no museu.",
             {
                 fontSize: '28px',
-                color: '#ffffff',
+                color: LayoutConfig.COLORS.WHITE,
                 align: 'center',
                 lineSpacing: 10,
                 wordWrap: { width: panelW - 140, useAdvancedWrap: true }
@@ -422,7 +425,7 @@ export class UIScene extends Scene {
 
         this.inspectTutorialEscHint = this.add.text(0, 0, 'ESC para fechar', {
             fontSize: '22px',
-            color: '#ff4d4d'
+            color: LayoutConfig.COLORS.DANGER_RED
         }).setOrigin(0, 1);
 
         this.inspectTutorialOverlay.add([
@@ -465,8 +468,8 @@ export class UIScene extends Scene {
         this.inspectTutorialIsVisible = true;
         this.inspectTutorialHasBeenShown = true;
 
-        const gameScene = this.scene.get('Game') as Scene;
-        gameScene.events.emit('inspect-tutorial-opened');
+        const gameScene = this.scene.get(SceneNames.GAME) as Scene;
+        gameScene.events.emit(GameEvents.INSPECT_TUTORIAL_OPENED);
 
         this.inspectTutorialOverlay.setVisible(true);
         this.inspectTutorialOverlay.setAlpha(0);
@@ -489,8 +492,8 @@ export class UIScene extends Scene {
         if (!this.inspectTutorialIsVisible) return;
         this.inspectTutorialIsVisible = false;
 
-        const gameScene = this.scene.get('Game') as Scene;
-        gameScene.events.emit('inspect-tutorial-closed');
+        const gameScene = this.scene.get(SceneNames.GAME) as Scene;
+        gameScene.events.emit(GameEvents.INSPECT_TUTORIAL_CLOSED);
 
         if (this.onEscInspectTutorialHandler) this.input.keyboard?.off('keydown', this.onEscInspectTutorialHandler);
 
@@ -549,7 +552,7 @@ export class UIScene extends Scene {
 
         this.controlsTitle = this.add.text(0, 0, 'Controles', {
             fontSize: '44px',
-            color: '#ffffff',
+            color: LayoutConfig.COLORS.WHITE,
             fontStyle: 'bold'
         }).setOrigin(0.5, 0);
 
@@ -560,7 +563,7 @@ export class UIScene extends Scene {
             'TAB: abrir o mapa das relíquias\n' +
             'Q: ver novamente os controles', {
             fontSize: '28px',
-            color: '#ffffff',
+            color: LayoutConfig.COLORS.WHITE,
             align: 'left',
             lineSpacing: 10,
             wordWrap: { width: panelW - 140, useAdvancedWrap: true }
@@ -568,7 +571,7 @@ export class UIScene extends Scene {
 
         this.controlsEscHint = this.add.text(0, 0, 'ESC para fechar', {
             fontSize: '22px',
-            color: '#ff4d4d'
+            color: LayoutConfig.COLORS.DANGER_RED
         }).setOrigin(0, 1);
 
         this.controlsOverlay.add([
@@ -598,8 +601,8 @@ export class UIScene extends Scene {
         if (this.controlsIsVisible) return;
         this.controlsIsVisible = true;
 
-        const gameScene = this.scene.get('Game') as Scene;
-        gameScene.events.emit('controls-overlay-opened');
+        const gameScene = this.scene.get(SceneNames.GAME) as Scene;
+        gameScene.events.emit(GameEvents.CONTROLS_OVERLAY_OPENED);
 
         this.controlsOverlay.setVisible(true);
         this.controlsOverlay.setAlpha(0);
@@ -639,8 +642,8 @@ export class UIScene extends Scene {
         if (!this.controlsIsVisible) return;
         this.controlsIsVisible = false;
 
-        const gameScene = this.scene.get('Game') as Scene;
-        gameScene.events.emit('controls-overlay-closed');
+        const gameScene = this.scene.get(SceneNames.GAME) as Scene;
+        gameScene.events.emit(GameEvents.CONTROLS_OVERLAY_CLOSED);
 
         if (this.onEscControlsHandler) this.input.keyboard?.off('keydown', this.onEscControlsHandler);
 
@@ -664,8 +667,8 @@ export class UIScene extends Scene {
         this.inventoryDimmer.setPosition(w / 2, h / 2);
         this.inventoryDimmer.setSize(w, h);
 
-        this.inventoryPanelW = Math.min(Math.floor(w * 0.90), 1320);
-        this.inventoryPanelH = Math.min(Math.floor(h * 0.90), 880);
+        this.inventoryPanelW = Math.min(Math.floor(w * 0.90), LayoutConfig.UI.INVENTORY.MAX_WIDTH);
+        this.inventoryPanelH = Math.min(Math.floor(h * 0.90), LayoutConfig.UI.INVENTORY.MAX_HEIGHT);
 
         this.inventoryPanel.setPosition(w / 2, h / 2);
 
@@ -693,13 +696,13 @@ export class UIScene extends Scene {
 
         this.inventoryBg.clear();
 
-        this.inventoryBg.fillStyle(0xdbc8a3, 1);
+        this.inventoryBg.fillStyle(LayoutConfig.COLORS.INVENTORY_BG, 1);
         this.inventoryBg.fillRoundedRect(x, y, w, h, 18);
 
-        this.inventoryBg.fillStyle(0xf3ead2, 0.35);
+        this.inventoryBg.fillStyle(LayoutConfig.COLORS.INVENTORY_INNER, 0.35);
         this.inventoryBg.fillRoundedRect(x + 10, y + 10, w - 20, h - 20, 14);
 
-        this.inventoryBg.lineStyle(6, 0x6a4b2a, 0.85);
+        this.inventoryBg.lineStyle(6, LayoutConfig.COLORS.BORDER_BROWN, 0.85);
         this.inventoryBg.strokeRoundedRect(x + 3, y + 3, w - 6, h - 6, 18);
 
         this.inventoryBg.lineStyle(2, 0x000000, 0.12);
@@ -743,8 +746,8 @@ export class UIScene extends Scene {
         this.inventoryIsVisible = true;
         this.refreshInventory();
 
-        const gameScene = this.scene.get('Game') as Scene;
-        gameScene.events.emit('inventory-opened');
+        const gameScene = this.scene.get(SceneNames.GAME) as Scene;
+        gameScene.events.emit(GameEvents.INVENTORY_OPENED);
 
         this.inventoryOverlay.setVisible(true);
         this.inventoryOverlay.setAlpha(0);
@@ -767,8 +770,8 @@ export class UIScene extends Scene {
     private hideInventory() {
         this.inventoryIsVisible = false;
 
-        const gameScene = this.scene.get('Game') as Scene;
-        gameScene.events.emit('inventory-closed');
+        const gameScene = this.scene.get(SceneNames.GAME) as Scene;
+        gameScene.events.emit(GameEvents.INVENTORY_CLOSED);
 
         this.tweens.add({
             targets: this.inventoryOverlay,
@@ -819,7 +822,7 @@ export class UIScene extends Scene {
                 const sy = y + row * (slot + gap);
 
                 const slotBg = this.add.rectangle(x + slot / 2, sy + slot / 2, slot, slot, 0x000000, 0.07);
-                slotBg.setStrokeStyle(4, 0x6a4b2a, 0.78);
+                slotBg.setStrokeStyle(4, LayoutConfig.COLORS.BORDER_BROWN, 0.78);
 
                 const inner = this.add.rectangle(x + slot / 2, sy + slot / 2, slot - 14, slot - 14, 0xffffff, 0.16);
                 inner.setStrokeStyle(2, 0x000000, 0.10);
@@ -831,12 +834,17 @@ export class UIScene extends Scene {
                     img.setScale(scale);
                     this.inventoryContent.add([slotBg, inner, img]);
                 } else {
+                    const count = this.add.text(x + slot - 10, sy + slot - 36, '1/1', {
+                        fontSize: '22px',
+                        color: LayoutConfig.COLORS.PRIMARY_BROWN,
+                        fontStyle: 'bold'
+                    }).setOrigin(1, 0);
                     const label = this.add.text(x + slot / 2, sy + slot / 2, this.getInventoryPlaceholderLabel(step.infoKey), {
                         fontSize: '18px',
                         color: '#3b2a1a',
                         fontStyle: 'bold'
                     }).setOrigin(0.5);
-                    this.inventoryContent.add([slotBg, inner, label]);
+                    this.inventoryContent.add([slotBg, inner, label, count]);
                 }
             });
 
@@ -937,7 +945,7 @@ export class UIScene extends Scene {
             const done = this.questManager.hasInfo(missionId, step.infoKey);
             const checkbox = done ? '[✓]' : '[ ]';
             texts[idx].setText(`${checkbox} ${step.text}`);
-            texts[idx].setColor(done ? '#a8ffb0' : '#ffffff');
+            texts[idx].setColor(done ? LayoutConfig.COLORS.SUCCESS_GREEN : LayoutConfig.COLORS.WHITE);
         });
     }
 
@@ -956,11 +964,11 @@ export class UIScene extends Scene {
         this.phaseCompletePanel.setDepth(10000);
 
         const bg = this.add.rectangle(0, 0, 800, 500, 0x000000, 0.95);
-        bg.setStrokeStyle(4, 0xffd700);
+        bg.setStrokeStyle(4, LayoutConfig.COLORS.GOLD_HEX);
 
-        const title = this.add.text(0, -180, 'FASE CONCLUÍDA!', {
-            fontSize: '56px',
-            color: '#ffd700',
+        const title = this.add.text(0, -210, 'Fase concluída!', {
+            fontSize: '52px',
+            color: LayoutConfig.COLORS.GOLD,
             fontStyle: 'bold'
         }).setOrigin(0.5);
 
@@ -969,6 +977,11 @@ export class UIScene extends Scene {
             color: '#ffffff',
             wordWrap: { width: 700, useAdvancedWrap: true },
             align: 'center'
+        }).setOrigin(0.5);
+
+        const subText = this.add.text(0, 180, 'Pressione F5 para jogar novamente', {
+            fontSize: '24px',
+            color: LayoutConfig.COLORS.DISABLED_GREY
         }).setOrigin(0.5);
 
         const closeText = this.add.text(0, 210, '[ Pressione ESC para fechar ]', {
@@ -985,13 +998,13 @@ export class UIScene extends Scene {
             const star = this.add.image(startX + (i * starSpacing), 0, 'star');
             star.setScale(8);
             if (i >= collectedStars) {
-                star.setTint(0x444444); // Dark star for missing
+                star.setTint(LayoutConfig.COLORS.DARK_STAR_TINT); // Dark star for missing
                 star.setAlpha(0.5);
             }
             starsContainer.add(star);
         }
 
-        this.phaseCompletePanel.add([bg, title, starsContainer, message, closeText]);
+        this.phaseCompletePanel.add([bg, title, starsContainer, message, subText, closeText]);
         // Do not add to `this.root` so it centers on screen exactly without -20 offset.
 
         // Listen to ESC to close

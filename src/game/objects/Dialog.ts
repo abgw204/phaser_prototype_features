@@ -25,6 +25,18 @@ export const NPC_CONFIGS: Record<string, NpcConfig> = {
             completed: [
                 'Olhe! O azul, o amarelo... As cores estão voltando! A memória de Vincent vive novamente!',
                 'Obrigado, Curador Viajante. Esta ala do museu nunca mais será esquecida.'
+            ],
+            success: [
+                `Incrível! Você demonstrou grande conhecimento!`,
+                'E conseguiu trazer um pouco de cor de volta para este salão!',
+                'Pegue essa estrela dourada como recompensa!',
+                'Você precisará delas ao longo da sua jornada!',
+                'Esse é um grande passo para restaurar a luz do mundo!'
+            ],
+            failure: [
+                'Hmm...',
+                'Talvez precise observar as obras com mais atenção...',
+                'Tente ler as informações novamente!'
             ]
         }
     },
@@ -50,7 +62,19 @@ export const NPC_CONFIGS: Record<string, NpcConfig> = {
             completed: [
                 'As linhas do tempo estão restauradas! O passado profundo respira mais uma vez.',
                 'Sua jornada é nobre, Curador. Leve essa luz para os próximos salões.'
+            ],
+            success: [
+                'Parabéns! Agora você entende as relíquias antigas!',
+                'O salão está mais iluminado.',
+                'Pegue essa estrela dourada, ela trará luz ao seu caminho.',
+                'Você precisará delas para avançar em sua jornada!'
+            ],
+            failure: [
+                'Hmm... Não estamos tão certos sobre as relíquias.',
+                'Acho que você precisa dar outra olhada.',
+                'Preste bem atenção nos detalhes!'
             ]
         }
     }
-};
+}
+;

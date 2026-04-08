@@ -35,7 +35,7 @@ export class InteractionComponent {
     private dialogMessage: string;
     private dialogueLines: string[] | null = null;
     private infoKey: string | null = null;
-    private onInteract: (() => void) | null = null;
+    public onInteract: (() => void) | null = null;
     private onInfoCollected: ((key: string) => void) | null = null;
     private requireInspectionMode: boolean;
 

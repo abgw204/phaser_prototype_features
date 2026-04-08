@@ -24,4 +24,5 @@ export const GameEvents = {
     MISSION_ACCEPTED: 'mission-accepted',
     MISSION_PROGRESS_CHANGED: 'mission-progress-changed',
     MISSION_STATUS_CHANGED: 'mission-status-changed',
+    INFO_COLLECTED: 'info-collected',
 } as const;

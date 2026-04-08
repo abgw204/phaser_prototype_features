@@ -12,6 +12,8 @@ export interface NpcConfig {
         collecting: string[];
         ready: string[];
         completed: string[];
+        success: string[]; // Diálogo após acertar o quiz
+        failure: string[]; // Diálogo após errar o quiz
     };
 }
 
@@ -84,6 +86,10 @@ export class Npc extends Phaser.Physics.Arcade.Sprite {
         this.once(Phaser.GameObjects.Events.DESTROY, () => {
             this.scene.events.off(Phaser.Scenes.Events.UPDATE, this.update, this);
         }, this);
+    }
+
+    public getDialogues() {
+        return this.config.dialogues;
     }
 
     setQuestManager(qm: QuestManager) {

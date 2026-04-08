@@ -1,5 +1,8 @@
 import { Npc } from './Npc';
 import { NPC_CONFIGS } from './Dialog';
+import { ObjectRegistry } from '../data/ObjectRegistry';
+import { InteractiveButton } from './InteractiveButton';
+import { GameEvents } from '../constants/GameEvents';
 import * as Phaser from 'phaser';
 
 /** Interface helper para propriedades do Tiled */
@@ -110,5 +113,39 @@ export class MapManager {
         });
 
         return npcs;
+    }
+
+    /**
+     * Creates interactive items based on Tiled objects and ObjectRegistry.
+     * (Task 38 - Data-Driven approach)
+     */
+    static createInteractiveObjects(
+        scene: Phaser.Scene, 
+        mapData: MapData, 
+        scale: number = 6, 
+        onInfoCollected?: (key: string) => void
+    ): Record<string, InteractiveButton> {
+        const items: Record<string, InteractiveButton> = {};
+
+        Object.values(mapData.objectLayers).forEach(layer => {
+            layer.objects.forEach((obj: Phaser.Types.Tilemaps.TiledObject) => {
+                // If the object name exists in our Registry, instantiate it
+                if (obj.name && ObjectRegistry[obj.name] && obj.x !== undefined && obj.y !== undefined) {
+                    const config = ObjectRegistry[obj.name];
+                    
+                    const item = new InteractiveButton(scene, obj.x * scale, obj.y * scale, {
+                        ...config,
+                        onInfoCollected: (key) => {
+                            if (onInfoCollected) onInfoCollected(key);
+                            scene.events.emit(GameEvents.INFO_COLLECTED, key);
+                        }
+                    });
+                    
+                    items[obj.name] = item;
+                }
+            });
+        });
+
+        return items;
     }
 }
